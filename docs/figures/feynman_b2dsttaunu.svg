@@ -1,0 +1,50 @@
+<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <!-- Feynman diagram: anti-B0 (b dbar) -> D*+ (c dbar) tau- anti-nu_tau via b -> c W- -->
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#8b949e"/>
+    </marker>
+  </defs>
+
+  <!-- spectator quark line: dbar -> dbar (bottom) -->
+  <line x1="90" y1="270" x2="550" y2="270" stroke="#8b949e" stroke-width="2.5"/>
+  <polygon points="315,264.5 327,270 315,275.5" fill="#8b949e" transform="rotate(180 321 270)"/>
+  <text x="60" y="276" fill="#d29922" font-size="20" font-style="italic">d&#773;</text>
+  <text x="562" y="276" fill="#d29922" font-size="20" font-style="italic">d&#773;</text>
+
+  <!-- b -> c quark line (top) -->
+  <line x1="90" y1="180" x2="280" y2="180" stroke="#8b949e" stroke-width="2.5" marker-mid="none"/>
+  <polygon points="178,174.5 190,180 178,185.5" fill="#8b949e"/>
+  <line x1="280" y1="180" x2="550" y2="180" stroke="#8b949e" stroke-width="2.5"/>
+  <polygon points="408,174.5 420,180 408,185.5" fill="#8b949e"/>
+  <text x="63" y="186" fill="#e5534b" font-size="20" font-style="italic">b</text>
+  <text x="562" y="186" fill="#57ab5a" font-size="20" font-style="italic">c</text>
+
+  <!-- W- wavy line from vertex (280,180) up to (400,80) -->
+  <g stroke="#539bf5" stroke-width="2.5" fill="none">
+    <path d="M 280 180 c 8 -14 20 -2 26 -12 c 6 -10 -4 -18 6 -26 c 10 -8 18 4 26 -6 c 8 -10 -2 -20 8 -28 c 10 -8 20 2 28 -8 c 8 -10 0 -16 8 -22"/>
+  </g>
+  <text x="300" y="112" fill="#539bf5" font-size="20" font-style="italic">W&#8315;</text>
+
+  <!-- lepton lines from W vertex (382,78) -->
+  <line x1="382" y1="78" x2="550" y2="38" stroke="#8b949e" stroke-width="2.5"/>
+  <polygon points="460,55 472,58 462,66" fill="#8b949e"/>
+  <text x="562" y="42" fill="#986ee2" font-size="20" font-style="italic">&#964;&#8315;</text>
+  <line x1="382" y1="78" x2="550" y2="118" stroke="#8b949e" stroke-width="2.5"/>
+  <polygon points="472,94 462,88 464,100" fill="#8b949e"/>
+  <text x="562" y="126" fill="#986ee2" font-size="20" font-style="italic">&#957;&#773;</text>
+  <text x="578" y="132" fill="#986ee2" font-size="14" font-style="italic">&#964;</text>
+
+  <!-- vertex dots -->
+  <circle cx="280" cy="180" r="4" fill="#8b949e"/>
+  <circle cx="382" cy="78" r="4" fill="#8b949e"/>
+
+  <!-- meson braces / labels -->
+  <path d="M 78 172 q -14 26 0 106" stroke="#8b949e" stroke-width="1.5" fill="none"/>
+  <text x="22" y="232" fill="#8b949e" font-size="22" font-style="italic">B&#773;&#8304;</text>
+  <path d="M 600 172 q 14 26 0 106" stroke="#8b949e" stroke-width="1.5" fill="none"/>
+  <text x="612" y="228" fill="#8b949e" font-size="22" font-style="italic">D*&#8314;</text>
+
+  <!-- caption -->
+  <text x="320" y="340" fill="#8b949e" font-size="15" text-anchor="middle">B&#773;&#8304; &#8594; D*&#8314; &#964;&#8315; &#957;&#773;&#964;   (b &#8594; c &#964;&#8315; &#957;&#773;&#964; tree-level transition)</text>
+</svg>

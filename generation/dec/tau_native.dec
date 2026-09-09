@@ -1,0 +1,69 @@
+# Native EvtGen tau decays (from DECAY_2010.DEC) to avoid the Tauola
+# APKMAS crash in the conda-forge osx-arm64 build. Loaded after the
+# signal dec file; overrides the TAUOLA entries in DECAY.DEC.
+
+Decay tau-
+0.154002925 e-      anti-nu_e nu_tau                        PHOTOS TAULNUNU; #[Reconstructed PDG2011]
+0.170000000 mu-     anti-nu_mu nu_tau                       PHOTOS  TAULNUNU; #[Reconstructed PDG2011]
+0.109100000 pi-     nu_tau                                  TAUSCALARNU; #[Reconstructed PDG2011]
+0.006960000 K-      nu_tau                                  TAUSCALARNU; #[Reconstructed PDG2011]
+0.255100000 pi-     pi0     nu_tau                          TAUHADNU -0.108 0.775 0.149 1.364 0.400; #[Reconstructed PDG2011]
+0.001124109 nu_tau  gamma   pi-     pi0                     PYTHIA    41; #[Reconstructed PDG2011]
+0.079301562 pi0     pi0     pi-     nu_tau                  TAUHADNU -0.108 0.775 0.149 1.364 0.400 1.23 0.4; #[Reconstructed PDG2011]
+0.000385656 nu_tau  K-      pi0     pi0                     PYTHIA    41; #[Reconstructed PDG2011]
+0.008508640 nu_tau  pi-     pi0     pi0     pi0             PYTHIA    41; #[Reconstructed PDG2011]
+0.000864699 nu_tau  pi-     pi0     pi0     pi0     pi0     PHSP; #[Reconstructed PDG2011]
+#0.2515         rho- nu_tau                     TAUVECTORNU;
+#0.1790         a_1-  nu_tau                     TAUVECTORNU;
+# Modes with K0s
+#
+0.000319939 nu_tau  pi-     anti-K0                         PYTHIA    41; #[Reconstructed PDG2011]
+0.001590000 nu_tau  K-      K0                              PYTHIA    41; #[Reconstructed PDG2011]
+0.001700000 nu_tau  K0      pi-     anti-K0                 PYTHIA    41; #[Reconstructed PDG2011]
+0.001590000 nu_tau  K-      pi0     K0                      PYTHIA    41; #[Reconstructed PDG2011]
+0.004000000 nu_tau  pi-     anti-K0 pi0                     PYTHIA    41; #[Reconstructed PDG2011]
+# 3 Charged Particles
+#
+0.093200000 pi-     pi-     pi+     nu_tau                  TAUHADNU -0.108 0.775 0.149 1.364 0.400 1.23 0.4; #[Reconstructed PDG2011]
+0.046100000 nu_tau  pi-     pi+     pi-     pi0             PYTHIA    41; #[Reconstructed PDG2011]
+0.000501526 nu_tau  pi-     pi-     pi+     pi0     pi0     PHSP; #[Reconstructed PDG2011]
+0.000155646 nu_tau  pi-     pi-     pi+     pi0     pi0     pi0     PHSP; #[Reconstructed PDG2011]
+0.003420000 nu_tau  K-      pi+     pi-                     PYTHIA    41; #[Reconstructed PDG2011]
+0.001360000 nu_tau  K-      pi+     pi-     pi0             PYTHIA    41; #[Reconstructed PDG2011]
+0.001400000 nu_tau  K-      pi-     K+                      PYTHIA    41; #[Reconstructed PDG2011]
+0.000015800 nu_tau  K-      K+      K-                      PYTHIA    41; #[Reconstructed PDG2011]
+# 5 Charged Particles
+#
+0.000700406 nu_tau  pi-     pi-     pi-     pi+     pi+     PHSP; #[Reconstructed PDG2011]
+0.000129705 nu_tau  pi-     pi-     pi-     pi+     pi+     pi0     PHSP; #[Reconstructed PDG2011]
+# Misc other modes
+#
+0.012000000 K*-     nu_tau                                  TAUVECTORNU; #[Reconstructed PDG2011]
+0.001390000 nu_tau  eta     pi-     pi0                     PYTHIA    41; #[Reconstructed PDG2011]
+0.003199387 nu_tau  pi-     omega   pi0                     PYTHIA    41; #[Reconstructed PDG2011]
+0.000410000 nu_tau  K-      omega                           PYTHIA    41; #[Reconstructed PDG2011]
+0.002200000 anti-K*0 pi-     nu_tau                         PHSP; #[Reconstructed PDG2011]
+0.002100000 K*0     K-      nu_tau                          PHSP; #[Reconstructed PDG2011]
+0.000034000 phi     pi-     nu_tau                          PHSP; #[Reconstructed PDG2011]
+0.000037000 phi     K-      nu_tau                          PHSP; #[Reconstructed PDG2011]
+0.003600000 mu-     anti-nu_mu nu_tau  gamma                PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.017500000 e-      anti-nu_e nu_tau  gamma                 PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.004290000 K-      pi0     nu_tau                          PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.002200000 anti-K0 rho-    nu_tau                          PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.000260000 pi-     anti-K0 pi0     pi0     nu_tau          PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.000310000 pi-     K0      anti-K0 pi0     nu_tau          PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.000061000 K-      K+      pi-     pi0     nu_tau          PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.000028000 e-      e-      e+      anti-nu_e nu_tau        PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.004700000 K_1-    nu_tau                                  PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.001700000 K'_1-   nu_tau                                  PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.001500000 K'*-    nu_tau                                  PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.000150000 eta     pi-     pi0     pi0     nu_tau          PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.000161000 eta     K-      nu_tau                          PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.000138000 eta     K*-     nu_tau                          PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.000048000 eta     K-      pi0     nu_tau                  PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.000093000 eta     anti-K0 pi-     nu_tau                  PHSP;  #[New mode added] #[Reconstructed PDG2011]
+0.000360000 f_1     pi-     nu_tau                          PHSP;  #[New mode added] #[Reconstructed PDG2011]
+Enddecay
+CDecay tau+
+
+End

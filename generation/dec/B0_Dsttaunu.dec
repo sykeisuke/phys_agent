@@ -1,0 +1,46 @@
+# Signal: Upsilon(4S) -> B0 anti-B0 (with mixing), one B forced to
+#   B0 -> D*- tau+ nu_tau,  D*- -> anti-D0 pi-,  anti-D0 -> K+ pi-,  tau+ -> mu+ nu nu
+# The other B decays generically via DECAY.DEC.
+# Form factor: ISGW2 (v1; upgrade to BGL/CLN later).
+
+Alias      B0sig        B0
+Alias      anti-B0sig   anti-B0
+ChargeConj B0sig        anti-B0sig
+
+Alias      D*+sig       D*+
+Alias      D*-sig       D*-
+ChargeConj D*+sig       D*-sig
+
+Alias      D0sig        D0
+Alias      anti-D0sig   anti-D0
+ChargeConj D0sig        anti-D0sig
+
+Alias      tau+sig      tau+
+Alias      tau-sig      tau-
+ChargeConj tau+sig      tau-sig
+
+Decay Upsilon(4S)
+1.000  B0sig anti-B0sig B0 anti-B0   VSS_BMIX dm;
+Enddecay
+
+Decay B0sig
+1.000  D*-sig tau+sig nu_tau         ISGW2;
+Enddecay
+CDecay anti-B0sig
+
+Decay D*-sig
+1.000  anti-D0sig pi-                VSS;
+Enddecay
+CDecay D*+sig
+
+Decay anti-D0sig
+1.000  K+ pi-                        PHSP;
+Enddecay
+CDecay D0sig
+
+Decay tau+sig
+1.000  mu+ nu_mu anti-nu_tau         TAULNUNU;
+Enddecay
+CDecay tau-sig
+
+End

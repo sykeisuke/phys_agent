@@ -1,0 +1,8 @@
+data/
+plots/
+generation/bin/
+*.hepmc
+*.root
+*.parquet
+__pycache__/
+.DS_Store
