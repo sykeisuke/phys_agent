@@ -1,33 +1,33 @@
 # CLAUDE.md — Physics Analysis Agent instructions
 
-学部学生向け B → D\*τν 感度スタディのリポジトリ。エージェントは以下の規約に従うこと。
+Repository for an undergraduate B → D\*τν sensitivity study. The agent must follow the conventions below.
 
-## ワークフロー(必須)
+## Workflow (required)
 
-1. **Plan**: 解析タスクを受けたら、まず計画(生成するサンプル、選択、評価する量)を短くまとめてユーザーに提示し、承認を得る。
-2. **Execute**: 承認後に実行。MC 生成・解析コードの変更は必ず再実行して確認する。
-3. **Report**: 結果はプロット + 短い Markdown サマリで報告。数値は表に。
+1. **Plan**: When given an analysis task, first present a short plan to the user (samples to generate, selections, quantities to evaluate) and get approval.
+2. **Execute**: Run only after approval. Any change to MC generation or analysis code must be re-run and verified.
+3. **Report**: Report results as plots + a short Markdown summary. Put numbers in tables.
 
-## 環境
+## Environment
 
-- conda 環境 `physagent`(/opt/anaconda3/envs/physagent)。実行前に `source scripts/env.sh`。
-- EvtGen 2.2.3(conda-forge, osx-arm64)。DECAY.DEC / evt.pdl は `$CONDA_PREFIX/share/EvtGen/`。
-- フル検出器シミュレーションは使わない。検出器効果は `fastsim/` のスメアリングで模擬する。
+- conda environment `physagent` (/opt/anaconda3/envs/physagent). Run `source scripts/env.sh` before executing anything.
+- EvtGen 2.2.3 (conda-forge, osx-arm64). DECAY.DEC / evt.pdl live in `$CONDA_PREFIX/share/EvtGen/`.
+- No full detector simulation. Detector effects are emulated with the smearing in `fastsim/`.
 
-## 物理コンベンション
+## Physics conventions
 
-- 崩壊モード表記は B0 基準: signal = B0 → D\*⁻ τ⁺ ν_τ(CC 含む)。
-- Belle II 相当のブースト: Υ(4S) に pz ≈ +3 GeV(HER − LER)。C++ ドライバ内で設定済み。
-- 単位は GeV(natural units)。m²_miss は GeV²。
-- form factor: v1 は ISGW2。BGL/CLN へ更新する際は dec ファイルと README を同時に更新。
-- 乱数 seed はコマンドライン引数で固定し、再現性を保つ。
+- Decay modes are written in the B0 convention: signal = B0 → D\*⁻ τ⁺ ν_τ (charge conjugates implied).
+- Belle II-like boost: Υ(4S) with pz ≈ +3 GeV (HER − LER), already set in the C++ driver.
+- Units are GeV (natural units). m²_miss is in GeV².
+- Form factor: v1 uses ISGW2. When updating to BGL/CLN, update the dec files and README together.
+- Fix random seeds via command-line arguments for reproducibility.
 
-## コード規約
+## Code conventions
 
-- 生成物(data/*.hepmc, plots/*.png)はコミットしない(.gitignore 済み)。ただし報告用の最終プロットは docs/figures/ にコピーしてよい。
-- dec ファイルを追加したら README の生成コマンド一覧を更新。
-- Python は pyhepmc + numpy + matplotlib。ROOT は使わない(学生の環境依存を減らすため)。
+- Do not commit generated files (data/*.hepmc, plots/*.png) — already in .gitignore. Final plots for reports may be copied to docs/figures/.
+- When adding a dec file, update the generation command list in the README.
+- Python uses pyhepmc + numpy + matplotlib. No ROOT (to keep the student environment simple).
 
-## 学生対応
+## Working with students
 
-- 説明は日本語または英語(学生に合わせる)。物理の説明は学部レベルで、ヘリシティ抑制や missing mass の直感を式より先に。
+- Explanations are in English, at the undergraduate level. Lead with intuition (helicity suppression, missing mass) before equations.
