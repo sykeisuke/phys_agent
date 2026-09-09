@@ -83,6 +83,8 @@ phys_agent/
 ├── analysis/
 │   └── plot_m2miss.py      # 真値レベルの m²_miss / p*_ℓ / q² 分布
 ├── fastsim/                # 簡易検出器スメアリング(Phase 2)
+│   ├── smear.py            # 検出器モデル(分解能・アクセプタンス・効率)
+│   └── apply_fastsim.py    # スメア適用 + 真値との比較プロット
 ├── data/                   # 生成した MC(git 管理外)
 └── plots/                  # 出力プロット
 ```
@@ -146,10 +148,46 @@ m²_miss, p\*_ℓ, q² の signal vs normalization 比較プロットを `plots/
 μν モードの m²_miss は 0 に鋭くピークし、τν モードはニュートリノ 3 本のため広く正側に分布。
 p\*_ℓ も τ の二次ミューオンが柔らかいことがはっきり見える。
 
-## 7. ロードマップ
+## 7. Fast simulation(Phase 2: 検出器スメアリング)
+
+フル検出器シミュレーションの代わりに、`fastsim/smear.py` の簡易検出器モデルで
+荷電トラック(K, π, slow π, μ)をスメアする:
+
+| 効果 | モデル |
+|---|---|
+| 運動量分解能 | σ_p/p = 0.5%(ガウス、方向は不変、E は真の質量から再計算) |
+| アクセプタンス | 17° < θ_lab < 150°(Belle II CDC 相当) |
+| トラック検出効率 | 95% / トラック(p, θ に依らず一定) |
+
+D\* はスメア後の 3 トラック(K, π, slow π)の和で再構成し、p_B は真値を使う
+(ビーム制約 / B_tag の代役、Phase 3 で置き換え)。4 トラックのうち 1 本でも
+落ちたイベントは再構成失敗として捨てる。
+
+```bash
+python fastsim/apply_fastsim.py data/signal_taunu.hepmc data/norm_munu.hepmc 42
+```
+
+結果(5000 イベント / モード、seed 42):
+
+| モード | 再構成効率 | 内訳(目安) |
+|---|---|---|
+| B → D\*τν (signal) | 59.2% | アクセプタンス ×(0.95)⁴ ≈ 0.73 × 0.81 |
+| B → D\*μν (norm.) | 61.3% | 同上 |
+
+| | |
+|---|---|
+| ![m2miss fastsim vs truth](docs/figures/m2miss_fastsim_vs_truth.png) | ![m2miss peak zoom](docs/figures/m2miss_peak_zoom.png) |
+
+μν モードの m²_miss は真値では δ 関数的だったピークが、スメアで
+σ ≈ 0.07 GeV² に広がる。それでも τν モードの広い分布(〜数 GeV²)とは
+桁違いに狭く、m²_miss の識別力はスメア後もほぼ保たれる。
+p\*_ℓ と q² は 0.5% の運動量分解能ではほとんど変化しない
+(これらの分布幅は物理由来で、分解能より圧倒的に広いため)。
+
+## 8. ロードマップ
 
 - [x] **Phase 1**: EvtGen ローカル生成 + 真値レベルの識別変数分布
-- [ ] **Phase 2**: fast sim(運動量分解能・アクセプタンス・効率のスメアリング)
+- [x] **Phase 2**: fast sim(運動量分解能・アクセプタンス・効率のスメアリング)
 - [ ] **Phase 3**: D\* 再構成 + ROE から missing 4-momentum → テンプレートフィットで R(D\*) 統計感度
 - [ ] **Phase 4**: 背景モード追加(B → D\*\*ℓν, generic BB̄)、系統誤差の議論
 - [ ] **Final**: 解析ノート(Markdown/LaTeX)自動生成
