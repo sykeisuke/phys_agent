@@ -26,7 +26,7 @@ Repository for an undergraduate B → D\*τν sensitivity study. The agent must 
 
 - Do not commit generated files (data/*.hepmc, plots/*.png) — already in .gitignore. Final plots for reports may be copied to docs/figures/.
 - When adding a dec file, update the generation command list in the README.
-- Python uses pyhepmc + numpy + matplotlib. No ROOT (to keep the student environment simple).
+- Python uses pyhepmc + numpy + matplotlib. No ROOT C++ installation (to keep the student environment simple); ntuples are written and read as .root files with **uproot**.
 
 ## Working with students
 
