@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install numpy matplotlib pyhepmc
+
+      - name: Syntax check
+        run: python -m compileall -q analysis fastsim
+
+      - name: Fast-sim smoke test
+        run: |
+          python - <<'EOF'
+          import sys
+          sys.path.insert(0, "fastsim")
+          import numpy as np
+          from smear import DetectorConfig, detect_track, smear_track, in_acceptance
+
+          cfg = DetectorConfig()
+          rng = np.random.default_rng(1)
+
+          # a 1 GeV pion at theta = 90 deg is inside the acceptance
+          m_pi = 0.13957
+          p4 = np.array([np.hypot(1.0, m_pi), 1.0, 0.0, 0.0])
+          assert in_acceptance(p4, cfg)
+
+          # smearing preserves the invariant mass and direction
+          s = smear_track(p4, cfg, rng)
+          m_rec = np.sqrt(s[0] ** 2 - s[1:] @ s[1:])
+          assert abs(m_rec - m_pi) < 1e-9
+          assert s[2] == 0.0 and s[3] == 0.0
+
+          # smeared |p| stays within ~5 sigma of truth
+          ps = [np.linalg.norm(smear_track(p4, cfg, rng)[1:]) for _ in range(2000)]
+          assert abs(np.mean(ps) - 1.0) < 5 * cfg.sigma_p_over_p
+          assert abs(np.std(ps) / cfg.sigma_p_over_p - 1.0) < 0.2
+
+          # a track along the beam axis is outside the acceptance
+          fwd = np.array([np.hypot(1.0, m_pi), 0.0, 0.0, 1.0])
+          assert detect_track(fwd, cfg, rng) is None
+
+          print("fast-sim smoke test passed")
+          EOF
+
+      - name: Analysis script imports
+        run: python -c "import ast, pathlib; [ast.parse(p.read_text()) for p in pathlib.Path('.').glob('*/[a-z]*.py')]"
