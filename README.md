@@ -207,4 +207,12 @@ larger than the resolution.
 
 ---
 
+## License
+
+This project is licensed under the [GNU GPL v3](LICENSE). The τ decay table
+[tau_native.dec](generation/dec/tau_native.dec) is derived from DECAY_2010.DEC
+shipped with [EvtGen](https://evtgen.hepforge.org/), which is itself GPL-3.0.
+
+---
+
 *Keisuke Yoshihara (kyoshiha@hawaii.edu) — undergraduate research training project, UH Mānoa*
