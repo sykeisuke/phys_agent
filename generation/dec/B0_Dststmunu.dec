@@ -1,0 +1,60 @@
+# Background: B0 -> D** mu+ nu (semileptonic feed-down), narrow D** states only.
+# D** -> D*- pi0 is forced so every event contains a reconstructable D*-
+# with the same K pi pi chain as the signal; the extra pi0 is missed,
+# which shifts m2_miss to positive values (the dominant background shape).
+#
+# Relative D_1 : D_2* weights follow DECAY.DEC (0.0042 : 0.0033).
+# NOTE: forcing D** -> D*- pi0 ignores the D*0 pi- and D pi modes, so this
+# sample gives background *shapes*, not absolute normalization.
+
+Alias      B0sig        B0
+Alias      anti-B0sig   anti-B0
+ChargeConj B0sig        anti-B0sig
+
+Alias      D_1-sig      D_1-
+Alias      D_1+sig      D_1+
+ChargeConj D_1+sig      D_1-sig
+
+Alias      D_2*-sig     D_2*-
+Alias      D_2*+sig     D_2*+
+ChargeConj D_2*+sig     D_2*-sig
+
+Alias      D*+sig       D*+
+Alias      D*-sig       D*-
+ChargeConj D*+sig       D*-sig
+
+Alias      D0sig        D0
+Alias      anti-D0sig   anti-D0
+ChargeConj D0sig        anti-D0sig
+
+Decay Upsilon(4S)
+1.000  B0sig anti-B0sig B0 anti-B0   VSS_BMIX dm;
+Enddecay
+
+Decay B0sig
+0.560  D_1-sig  mu+ nu_mu            PHOTOS ISGW2;
+0.440  D_2*-sig mu+ nu_mu            PHOTOS ISGW2;
+Enddecay
+CDecay anti-B0sig
+
+Decay D_1-sig
+1.000  D*-sig pi0                    VVS_PWAVE 0.0 0.0 0.0 0.0 1.0 0.0;
+Enddecay
+CDecay D_1+sig
+
+Decay D_2*-sig
+1.000  D*-sig pi0                    TVS_PWAVE 0.0 0.0 1.0 0.0 0.0 0.0;
+Enddecay
+CDecay D_2*+sig
+
+Decay D*-sig
+1.000  anti-D0sig pi-                VSS;
+Enddecay
+CDecay D*+sig
+
+Decay anti-D0sig
+1.000  K+ pi-                        PHSP;
+Enddecay
+CDecay D0sig
+
+End

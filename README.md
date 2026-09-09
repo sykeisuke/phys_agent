@@ -197,11 +197,78 @@ of m²_miss largely survives. p\*_ℓ and q² are essentially unchanged by the
 0.5% momentum resolution, since their widths are physics-dominated and far
 larger than the resolution.
 
-## 8. Roadmap
+## 8. Ntuple production (Phase 3: samples for the branching-fraction analysis)
+
+Phase 3 is a simple **branching-fraction (counting) analysis** of
+B0 → D\*τν. The agent provides the samples and the ntuple-production
+script; **selection optimization and the BF extraction are the student's
+task**, starting from flat ROOT ntuples.
+
+### Samples
+
+| mode_id | Sample | Role | dec file |
+|---|---|---|---|
+| 0 | B0 → D\*τν, τ → μνν | signal | `B0_Dsttaunu.dec` |
+| 1 | B0 → D\*μν | normalization (and bkg via resolution tail) | `B0_Dstmunu.dec` |
+| 2 | B0 → D\*\*μν, D\*\* → D\*π0 (D₁, D₂\*) | dominant background (semileptonic feed-down) | `B0_Dststmunu.dec` |
+
+The D\*\* sample forces the narrow states D₁(2420) and D₂\*(2460) into
+D\*⁻π0, so every event contains the same reconstructable K π π chain as the
+signal; the missed π0 shifts m²_miss to positive values. Forced-mode samples
+give background **shapes**, not absolute normalization. Continuum
+e⁺e⁻ → qq̄ is not simulated (EvtGen alone cannot; noted as a limitation).
+
+```bash
+./generation/bin/generate generation/dec/B0_Dststmunu.dec 5000 data/bkg_dststmunu.hepmc 3 generation/dec/tau_native.dec
+```
+
+### Ntuples
+
+`fastsim/make_ntuple.py` runs the fast simulation and writes one row per
+reconstructed candidate to a ROOT file with **uproot** (pure Python — no
+ROOT C++ installation needed):
+
+```bash
+python fastsim/make_ntuple.py data/signal_taunu.hepmc   data/signal_taunu.root   0 42
+python fastsim/make_ntuple.py data/norm_munu.hepmc      data/norm_munu.root      1 43
+python fastsim/make_ntuple.py data/bkg_dststmunu.hepmc  data/bkg_dststmunu.root  2 44
+```
+
+Branches (smeared unless noted): `m2miss`, `plep_star`, `q2`, `m_d0`,
+`delta_m`, `p_lep_lab`, `costh_lep_lab`, `p_dst_lab`,
+`m2miss_true`, `plep_star_true`, `q2_true`, `mode_id`, `event`.
+
+Read them back with:
+
+```python
+import uproot
+events = uproot.open("data/signal_taunu.root")["events"].arrays(library="np")
+```
+
+Reconstruction efficiencies (5000 events / mode): signal 59.2%,
+normalization 61.2%, D\*\*μν 59.8%.
+
+| | |
+|---|---|
+| ![m2miss modes](docs/figures/m2miss_modes.png) | ![p*_lep modes](docs/figures/plep_star_modes.png) |
+
+The D\*\*μν background peaks at m²_miss ≈ 0.3–1 GeV² (one missed π0),
+between the normalization peak and the broad signal distribution — exactly
+the feed-down structure seen in the Belle/Belle II R(D\*) analyses.
+
+### Student tasks (from the ntuples)
+
+1. Choose selections on `delta_m`, `m_d0`, `plep_star`, … and optimize a
+   figure of merit (e.g. S/√(S+B)) for the signal region in m²_miss.
+2. Count events, correct for efficiency, and extract
+   B(B0 → D\*τν) assuming known N_BB and sub-mode branching fractions.
+
+## 9. Roadmap
 
 - [x] **Phase 1**: local EvtGen generation + truth-level discriminating variables
 - [x] **Phase 2**: fast sim (momentum resolution, acceptance, efficiency smearing)
-- [ ] **Phase 3**: D\* reconstruction + missing 4-momentum from the ROE → template fit for the R(D\*) statistical sensitivity
+- [x] **Phase 3a**: D\*\*μν background sample + ROOT ntuple production (uproot)
+- [ ] **Phase 3b**: selection optimization + branching-fraction extraction (student task)
 - [ ] **Phase 4**: additional background modes (B → D\*\*ℓν, generic BB̄), discussion of systematics
 - [ ] **Final**: automated analysis note (Markdown/LaTeX)
 
