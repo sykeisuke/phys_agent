@@ -13,7 +13,7 @@ R(D\*) measurement at the generator level plus a simple detector smearing.
 The semitauonic decay B → D\*τν is compared with the light-lepton modes
 B → D\*ℓν (ℓ = e, μ) through the ratio
 
-$$R(D^*) = \frac{\mathcal{B}(B \to D^* \tau \nu)}{\mathcal{B}(B \to D^* \ell \nu)}$$
+$$R(D^{\ast}) = \frac{\mathcal{B}(B \to D^{\ast} \tau \nu)}{\mathcal{B}(B \to D^{\ast} \ell \nu)}$$
 
 which is precisely predicted in the Standard Model (~0.25). Measured values
 have long sat above the SM prediction, making this a well-known hint of
