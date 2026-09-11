@@ -418,4 +418,4 @@ shipped with [EvtGen](https://evtgen.hepforge.org/), which is itself GPL-3.0.
 
 ---
 
-*Keisuke Yoshihara (kyoshiha@hawaii.edu) — University of Hawai\`i at Mānoa*
+*Keisuke Yoshihara (kyoshiha@hawaii.edu) — UH Mānoa*
