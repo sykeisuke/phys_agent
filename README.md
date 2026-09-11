@@ -1,19 +1,21 @@
-# Physics Analysis Agent — B → D\*τν Sensitivity Study
+# Physics Analysis Agent — Semileptonic B Branching-Fraction Framework
 
-An undergraduate research project on the semileptonic B-meson decay
-**B → D\*(→ Dπ) τν**, carried out together with an AI agent.
-Instead of official Belle II samples, we **run EvtGen locally on a laptop
-(macOS, Apple Silicon) to produce our own MC**, and study the sensitivity of an
-R(D\*) measurement at the generator level plus a simple detector smearing.
+A student research project, carried out together with an AI agent, that builds
+a **framework for measuring branching fractions of semileptonic B-meson
+decays**: EvtGen MC generation → fast detector simulation → ROOT ntuples →
+selection and BF extraction. Instead of official Belle II samples, we **run
+EvtGen locally on a laptop (macOS, Apple Silicon) to produce our own MC**.
+The pipeline is mode-agnostic — adding a decay mode is a matter of adding a
+dec file. **B → D\*(→ Dπ) τν** serves as the first worked example.
 
 ---
 
-## 1. Physics background
+## 1. Physics background (worked example: B → D\*τν)
 
 The semitauonic decay B → D\*τν is compared with the light-lepton modes
 B → D\*ℓν (ℓ = e, μ) through the ratio
 
-$$R(D^*) = \frac{\mathcal{B}(B \to D^* \tau \nu)}{\mathcal{B}(B \to D^* \ell \nu)}$$
+$$R(D^{\ast}) = \frac{\mathcal{B}(B \to D^{\ast} \tau \nu)}{\mathcal{B}(B \to D^{\ast} \ell \nu)}$$
 
 which is precisely predicted in the Standard Model (~0.25). Measured values
 have long sat above the SM prediction, making this a well-known hint of
@@ -138,6 +140,26 @@ Decay chains (forced in v1 to keep the reconstruction simple):
 - **Signal**: B0 → D\*⁻ τ⁺ ν_τ,  D\*⁻ → D̄0 π⁻,  D̄0 → K⁺ π⁻,  τ⁺ → μ⁺ ν ν̄
 - **Norm**: B0 → D\*⁻ μ⁺ ν_μ,  same D\* chain
 - Form factor: ISGW2 in v1 (to be updated to BGL/CLN later)
+
+### Further modes
+
+The framework is not limited to B → D\*ℓν. Additional dec files cover
+charged-B semileptonic modes with a D_s or excited kaons in the final state,
+plus a fully generic BB̄ sample; 4-body semileptonic decays use the PHSP
+model (no dedicated form-factor model exists in EvtGen for these
+topologies). All sub-decays are forced to fully charged final states where
+possible.
+
+```bash
+./generation/bin/generate generation/dec/B_DsstKstmunu.dec 5000 data/sig_dsstkst.hepmc  10 generation/dec/tau_native.dec   # B- -> D_s*+ K*- mu nu
+./generation/bin/generate generation/dec/B_DsK1munu.dec    5000 data/sig_dsk1.hepmc     11 generation/dec/tau_native.dec   # B- -> D_s+ K_1(1270)- mu nu
+./generation/bin/generate generation/dec/B_Ds1Kmunu.dec    5000 data/sig_ds1k.hepmc     12 generation/dec/tau_native.dec   # B- -> D_s1(2536)+ K- mu nu
+./generation/bin/generate generation/dec/generic_bbbar.dec 20000 data/generic_bbbar.hepmc 13 generation/dec/tau_native.dec # generic Y(4S) -> B Bbar
+```
+
+Generation is fast (~2000 events/s) and HepMC ascii files take ~6 KB/event,
+so samples are regenerated on demand from the fixed seeds rather than stored
+or committed.
 
 ## 6. Analysis (Phase 1: truth level)
 
@@ -269,8 +291,8 @@ the feed-down structure seen in the Belle/Belle II R(D\*) analyses.
 - [x] **Phase 2**: fast sim (momentum resolution, acceptance, efficiency smearing)
 - [x] **Phase 3a**: D\*\*μν background sample + ROOT ntuple production (uproot)
 - [ ] **Phase 3b**: selection optimization + branching-fraction extraction (student task)
-- [ ] **Phase 4**: additional background modes (B → D\*\*ℓν, generic BB̄), discussion of systematics
-- [ ] **Final**: automated analysis note (Markdown/LaTeX)
+- [ ] **Phase 4**: generalize the ntuple producer to the charged-B / D_s modes; generic BB̄ background; systematics
+- [ ] **Final**: automated analysis note (Markdown/LaTeX) per measured mode
 
 ---
 
