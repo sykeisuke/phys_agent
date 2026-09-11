@@ -18,7 +18,7 @@
   <g>
     <rect x="30" y="90" width="150" height="90" rx="14" fill="#e8f0fe" stroke="#4285f4" stroke-width="2"/>
     <text x="105" y="128" text-anchor="middle" font-size="30">&#128100;</text>
-    <text x="105" y="160" text-anchor="middle" font-size="17" font-weight="bold" fill="#1a3c8b">User (student)</text>
+    <text x="105" y="160" text-anchor="middle" font-size="17" font-weight="bold" fill="#1a3c8b">User</text>
   </g>
 
   <!-- request arrow -->
@@ -49,7 +49,7 @@
   <!-- ===== workflow panel ===== -->
   <g>
     <rect x="480" y="55" width="640" height="180" rx="14" fill="#ffffff" stroke="#90a4ae" stroke-width="1.5"/>
-    <text x="800" y="83" text-anchor="middle" font-size="15" font-weight="bold" fill="#546e7a">Analysis loop (every step needs the student&#8217;s OK)</text>
+    <text x="800" y="83" text-anchor="middle" font-size="15" font-weight="bold" fill="#546e7a">Analysis loop (every step needs the user&#8217;s OK)</text>
 
     <!-- Plan -->
     <rect x="510" y="105" width="170" height="100" rx="12" fill="#e3f2fd" stroke="#1e88e5" stroke-width="2"/>
