@@ -128,6 +128,16 @@ Example (the worked-example samples):
 ./generation/bin/generate generation/dec/B0_Dststmunu.dec 5000 data/bkg_dststmunu.hepmc 3 generation/dec/tau_native.dec
 ```
 
+For these charged-B modes, `fastsim/make_ntuple_ds.py` (truth-seeded,
+mode-agnostic: reconstructs any forced B → hadrons + μν) produces the
+ntuples, and `analysis/sensitivity_ds.py` turns the efficiencies into
+expected yields and statistical precisions at 1 ab⁻¹:
+
+```bash
+python fastsim/make_ntuple_ds.py data/sig_dsstkst.hepmc data/sig_dsstkst.root 10 20
+python analysis/sensitivity_ds.py
+```
+
 Generation is fast (~2000 events/s) and HepMC ascii files take ~6 KB/event,
 so samples are **regenerated on demand from fixed seeds** rather than stored
 or committed. 4-body semileptonic decays use PHSP (EvtGen has no dedicated
