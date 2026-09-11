@@ -95,6 +95,30 @@ def make_ntuple(hepmc_file: str, output_name: str, mode_id: int, seed: int) -> s
     return proc.stdout.strip()
 
 
+@beta_tool
+def generate_continuum(n_events: int, output_name: str, seed: int) -> str:
+    """Generate continuum e+e- -> qq (u,d,s,c) background with Pythia8,
+    directly into a ROOT ntuple (same branches as make_ntuple). The
+    printout reports the cross section needed for luminosity weighting.
+
+    Args:
+        n_events: number of events (1 to 2,000,000; ~7000 events/s).
+        output_name: output ROOT file name, e.g. "continuum_0.root" (written to data/).
+        seed: random seed, fixed for reproducibility.
+    """
+    if not 1 <= n_events <= MAX_EVENTS:
+        return f"error: n_events must be within [1, {MAX_EVENTS}]"
+    out = DATA_DIR / _safe_name(output_name, ".root")
+    DATA_DIR.mkdir(exist_ok=True)
+    proc = subprocess.run(
+        ["python", str(REPO / "generation" / "generate_continuum.py"),
+         str(n_events), str(out), str(seed)],
+        capture_output=True, text=True, timeout=3600)
+    if proc.returncode != 0:
+        return f"continuum generation failed:\n{proc.stderr[-2000:]}"
+    return "\n".join(proc.stdout.strip().splitlines()[-2:])
+
+
 def _load(root_file: str, columns=None):
     import uproot
     path = DATA_DIR / _safe_name(root_file, ".root")
@@ -173,5 +197,40 @@ def plot_variable(root_files: list[str], variable: str, output_name: str,
     return f"wrote {out.relative_to(REPO)}"
 
 
-ANALYSIS_TOOLS = [list_decay_modes, generate_mc, make_ntuple, query_ntuple,
-                  plot_variable]
+@beta_tool
+def scan_cut(signal_file: str, background_files: list[str], variable: str,
+             thresholds: list[float], direction: str = ">",
+             base_selection: str = "m2miss > -999") -> str:
+    """Scan a one-dimensional cut and report S, B and S/sqrt(S+B) at each
+    threshold, so the best working point can be chosen (cut & count policy:
+    optimize one variable at a time on top of a fixed base selection).
+
+    Args:
+        signal_file: ROOT file in data/ treated as signal (S).
+        background_files: ROOT files in data/ treated as background (B).
+        variable: branch name to cut on, e.g. "m2miss".
+        thresholds: cut values to test, e.g. [0.5, 1.0, 1.5, 2.0].
+        direction: ">" keeps variable > threshold, "<" keeps variable < threshold.
+        base_selection: numpy boolean expression applied before the scan.
+    """
+    if direction not in (">", "<"):
+        return 'error: direction must be ">" or "<"'
+    sig = _load(signal_file)
+    bkgs = [_load(b) for b in background_files]
+    sig_base = _apply_cut(sig, base_selection)
+    bkg_base = [_apply_cut(b, base_selection) for b in bkgs]
+    lines = [f"threshold  S  B  S/sqrt(S+B)   (base: {base_selection})"]
+    for thr in thresholds:
+        def passing(t, base):
+            var = t[variable]
+            keep = var > thr if direction == ">" else var < thr
+            return int((base & keep).sum())
+        s = passing(sig, sig_base)
+        b = sum(passing(t, m) for t, m in zip(bkgs, bkg_base))
+        fom = s / np.sqrt(s + b) if s + b > 0 else 0.0
+        lines.append(f"{variable} {direction} {thr}: S={s} B={b} FoM={fom:.2f}")
+    return "\n".join(lines)
+
+
+ANALYSIS_TOOLS = [list_decay_modes, generate_mc, generate_continuum,
+                  make_ntuple, query_ntuple, plot_variable, scan_cut]

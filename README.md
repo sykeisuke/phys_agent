@@ -124,7 +124,21 @@ so samples are **regenerated on demand from fixed seeds** rather than stored
 or committed. 4-body semileptonic decays use PHSP (EvtGen has no dedicated
 form-factor model for those topologies); forced-mode samples give signal and
 background **shapes**, with absolute normalization applied at analysis time.
-Continuum e⁺e⁻ → qq̄ is not simulated (EvtGen alone cannot).
+
+### Continuum background
+
+Continuum e⁺e⁻ → qq̄ (u, d, s, c) is generated with **Pythia8** (already in
+the conda environment) directly into ntuples — Pythia → fast sim → ROOT in
+one pass, no HepMC intermediate:
+
+```bash
+python generation/generate_continuum.py 800000 data/continuum_0.root 300
+```
+
+σ(qq̄) ≈ 2.6 nb vs σ(BB̄) ≈ 1.1 nb, so a luminosity-matched dataset needs
+~2.4 continuum events per BB̄ event; ~14 % of continuum events contain a
+true D\* (from cc̄). Generation runs at ~7000 events/s. The printout reports
+the cross section and N_generated for the luminosity weight.
 
 > **Note**: The conda-forge osx-arm64 build of Tauola++ crashes at
 > initialization (`STOP IN APKMAS`), so we do not use Tauola; τ decays are
@@ -162,9 +176,20 @@ ROOT C++ installation needed):
 python fastsim/make_ntuple.py <in.hepmc> <out.root> <mode_id> <seed>
 ```
 
+Since v2 the reconstruction is **fully beam-constrained** — nothing uses the
+true B momentum, so BB̄ and continuum are treated identically. A candidate
+is a true D\*± with 3 charged tracks plus the highest-p\* charge-correlated
+muon in the event; kinematic variables are computed in the e⁺e⁻ CM frame
+with p_B = (√s/2, **0**) (the ~0.34 GeV B momentum is neglected, which
+smears m²_miss to an RMS of ≈ 0.7 GeV² — the physical cost of not tagging).
+
 Branches (smeared unless noted): `m2miss`, `plep_star`, `q2`, `m_d0`,
-`delta_m`, `p_lep_lab`, `costh_lep_lab`, `p_dst_lab`,
-`m2miss_true`, `plep_star_true`, `q2_true`, `mode_id`, `event`.
+`delta_m`, `cos_by` (cosine between the B and the D\*ℓ system, the basf2
+`cosThetaBetweenParticleAndNominalB`), `r2` (Fox-Wolfram H₂/H₀, continuum
+suppression), `p_lep_lab`, `costh_lep_lab`, `p_dst_lab`,
+`m2miss_true`, `plep_star_true`, `q2_true` (NaN without a true B ancestor),
+`true_mode` (1 = D\*τν, 2 = D\*μν, 0 = other B, 3 = continuum),
+`mode_id`, `event`.
 
 Read them back with:
 
@@ -274,30 +299,37 @@ between the normalization peak and the broad signal distribution.
 
 ### First-pass BF measurement (Phase 3b)
 
-A complete counting analysis on 10⁶ generic BB̄ events treated as the
-dataset ( `analysis/measure_bf_dsttaunu.py`; the `true_mode` ntuple branch
-labels each candidate's true B decay):
+A complete counting analysis on a **luminosity-matched pseudo-dataset**:
+10⁶ generic BB̄ events + 2.4 × 10⁶ continuum events
+(`analysis/measure_bf_dsttaunu.py`; the `true_mode` branch labels each
+candidate's origin):
 
 ```bash
-# 5 x 200k generic events (see section 4), then:
 python analysis/measure_bf_dsttaunu.py --signal data/signal_taunu.root \
-    --data data/generic_*.root --n-sig-gen 5000 --n-b0 <N> --truth-taunu <N>
+    --data data/generic_*.root --continuum data/continuum_*.root \
+    --cont-weight 0.995 --n-sig-gen 5000 --n-b0 <N> --truth-taunu <N>
 ```
 
 | Quantity | Value |
 |---|---|
-| Selection | \|m_D0 − 1.865\| < 20 MeV, \|Δm − 145.4\| < 2.5 MeV, m²_miss > 1.5 GeV² |
-| Efficiency (signal MC) | 49.4 ± 0.7 % |
-| Candidates in SR | 285 (background 242, MC truth) |
-| **B(B0 → D\*τν)** | **(1.97 ± 1.05 (stat)) %** |
-| Generator truth | 1.48 % → closure at +0.5σ |
+| Selection | \|m_D0 − 1.865\| < 20 MeV, \|Δm − 145.4\| < 2.5 MeV, R₂ < 0.3, m²_miss > 1.5 GeV² |
+| Efficiency (signal MC) | 45.0 ± 0.7 % |
+| Candidates in SR (lumi-weighted) | 973 (background 918, MC truth) |
+| **B(B0 → D\*τν)** | **(2.77 ± 2.19 (stat)) %** |
+| Generator truth | 1.48 % → closure at +0.6σ |
 
 ![BF measurement m2miss](docs/figures/bf_m2miss_data.png)
 
+The pseudo-dataset corresponds to only ~0.9 fb⁻¹; scaling the statistical
+error by 1/√L gives a **~4 % relative measurement at the Belle luminosity
+(711 fb⁻¹)** for this untagged selection. The background is dominated by
+real D\* paired with an unrelated muon (tag side or charm decays) — neither
+p\*_ℓ nor cos θ_BY separates it, which is the quantitative motivation for
+tag-side reconstruction in Phase 4.
+
 **Student tasks**: replace the MC-truth background subtraction with a
-sideband/control-region method; improve S/√(S+B) ≈ 2.5 (the background is
-flat in m²_miss — tag-side information is needed, which motivates Phase 4);
-study the luminosity needed for a 10% measurement.
+sideband/control-region method; verify the 1/√L scaling with toy datasets;
+quantify how much a tag (even a crude one) improves S/B.
 
 ---
 
