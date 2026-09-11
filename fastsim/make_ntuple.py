@@ -92,6 +92,29 @@ def b_ancestor(part):
     return None
 
 
+def classify_b(B):
+    """Truth label of a B decay: 1 = D* tau nu, 2 = D* mu nu, 0 = other."""
+    pids = [abs(d.pid) for d in B.end_vertex.particles_out]
+    if 413 in pids and 15 in pids:
+        return 1
+    if 413 in pids and 13 in pids:
+        return 2
+    return 0
+
+
+def count_b_decays(event, counts):
+    """Count true B0 decays (mixing transitions excluded) and the
+    B0 -> D* tau nu / D* mu nu fractions among them."""
+    for part in event.particles:
+        if abs(part.pid) != 511 or not part.end_vertex:
+            continue
+        dau = part.end_vertex.particles_out
+        if len(dau) == 1 and abs(dau[0].pid) == 511:
+            continue  # B0 <-> anti-B0 mixing transition, not a decay
+        counts["n_b0"] += 1
+        counts[{1: "n_dsttaunu", 2: "n_dstmunu", 0: "n_other"}[classify_b(part)]] += 1
+
+
 def find_candidate(event):
     """Return (pB, dst_tracks, dst_daughters_kpi, mu) for the first
     D* + mu pair sharing a B ancestor, or None."""
@@ -133,12 +156,15 @@ def main():
     cols = {k: [] for k in [
         "m2miss", "plep_star", "q2", "m_d0", "delta_m",
         "p_lep_lab", "costh_lep_lab", "p_dst_lab",
-        "m2miss_true", "plep_star_true", "q2_true", "mode_id", "event"]}
+        "m2miss_true", "plep_star_true", "q2_true",
+        "true_mode", "mode_id", "event"]}
     n_events = n_cand = n_rec = 0
+    truth_counts = {"n_b0": 0, "n_dsttaunu": 0, "n_dstmunu": 0, "n_other": 0}
 
     with pyhepmc.open(in_path) as f:
         for ievt, event in enumerate(f):
             n_events += 1
+            count_b_decays(event, truth_counts)
             cand = find_candidate(event)
             if cand is None:
                 continue
@@ -171,10 +197,11 @@ def main():
             cols["plep_star_true"].append(
                 np.linalg.norm(boost_to_rest(pLep_true, pB)[1:]))
             cols["q2_true"].append(minv2(pB - pDst_true))
+            cols["true_mode"].append(classify_b(B))
             cols["mode_id"].append(mode_id)
             cols["event"].append(ievt)
 
-    arrays = {k: np.array(v, dtype=np.int32 if k in ("mode_id", "event")
+    arrays = {k: np.array(v, dtype=np.int32 if k in ("true_mode", "mode_id", "event")
                           else np.float64) for k, v in cols.items()}
     with uproot.recreate(out_path) as f:
         f["events"] = arrays
@@ -182,6 +209,10 @@ def main():
     print(f"{in_path}: {n_events} events, {n_cand} truth candidates, "
           f"{n_rec} reconstructed (eff = {n_rec / n_events:.1%}) "
           f"-> {out_path} (mode_id={mode_id}, seed={seed})")
+    tc = truth_counts
+    print(f"truth B0 decays: {tc['n_b0']}  "
+          f"D*taunu: {tc['n_dsttaunu']}  D*munu: {tc['n_dstmunu']}  "
+          f"other: {tc['n_other']}")
 
 
 if __name__ == "__main__":

@@ -14,6 +14,15 @@ Repository for an undergraduate B → D\*τν sensitivity study. The agent must 
 - EvtGen 2.2.3 (conda-forge, osx-arm64). DECAY.DEC / evt.pdl live in `$CONDA_PREFIX/share/EvtGen/`.
 - No full detector simulation. Detector effects are emulated with the smearing in `fastsim/`.
 
+## Analysis policy
+
+- When an existing published analysis of the same or a similar mode exists
+  (Belle, Belle II, BaBar), follow its choice of kinematic variables and cite
+  it in the plan.
+- Default to cut & count. Multivariate selections (NN/BDT) only when their
+  systematic uncertainties can be evaluated — in this framework they usually
+  cannot, so use them only on explicit request.
+
 ## Physics conventions
 
 - Decay modes are written in the B0 convention: signal = B0 → D\*⁻ τ⁺ ν_τ (charge conjugates implied).
