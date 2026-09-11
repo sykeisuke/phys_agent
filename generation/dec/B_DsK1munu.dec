@@ -1,0 +1,45 @@
+# B- -> D_s+ K_1(1270)- mu- nu (4-body semileptonic, PHSP model).
+# Forced chain keeps all final-state particles charged:
+#   D_s+      -> phi pi+, phi -> K+ K-
+#   K_1(1270)- -> rho0 K-, rho0 -> pi+ pi-
+
+Alias      B+sig        B+
+Alias      B-sig        B-
+ChargeConj B+sig        B-sig
+
+Alias      D_s+sig      D_s+
+Alias      D_s-sig      D_s-
+ChargeConj D_s+sig      D_s-sig
+
+Alias      phisig       phi
+ChargeConj phisig       phisig
+
+Alias      K_1+sig      K_1+
+Alias      K_1-sig      K_1-
+ChargeConj K_1+sig      K_1-sig
+
+Decay Upsilon(4S)
+0.500  B+sig B-                      VSS;
+0.500  B-sig B+                      VSS;
+Enddecay
+
+Decay B-sig
+1.000  D_s+sig K_1-sig mu- anti-nu_mu   PHSP;
+Enddecay
+CDecay B+sig
+
+Decay D_s+sig
+1.000  phisig pi+                    SVS;
+Enddecay
+CDecay D_s-sig
+
+Decay phisig
+1.000  K+ K-                         VSS;
+Enddecay
+
+Decay K_1-sig
+1.000  rho0 K-                       VVS_PWAVE 1.0 0.0 0.0 0.0 0.0 0.0;
+Enddecay
+CDecay K_1+sig
+
+End
