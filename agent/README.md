@@ -43,6 +43,9 @@ Design choices worth knowing:
 
 1. Structured reports: make the final report a typed object
    (`output_config.format`) and save it under `docs/notes/`.
+1. Luminosity weighting in `scan_cut`: the FoM currently uses raw MC
+   counts; weight S and B by cross section × BF × luminosity / N_generated
+   so working points are optimized for a real dataset size.
 2. Add a `measure_bf` tool wrapping `analysis/measure_bf_dsttaunu.py`
    generalized to any mode.
 3. Cost/limit guards: cap total generated events per session; log every

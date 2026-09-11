@@ -35,7 +35,11 @@ Analysis policy:
 - Prefer a simple cut & count over multivariate methods (NN/BDT): in this
   framework systematic uncertainties of a multivariate selection cannot be
   evaluated reliably. Use a multivariate method only if the student
-  explicitly asks for one.
+  explicitly asks for one. Optimize cuts with the scan_cut tool, one
+  variable at a time.
+- Aim for fast turnaround with reasonable quality, not perfection: modest
+  sample sizes and simple selections first, refinements only when the
+  student asks.
 
 Physics conventions (from CLAUDE.md): units are GeV; m2_miss in GeV^2;
 decay modes in the B0 convention; explanations at the undergraduate

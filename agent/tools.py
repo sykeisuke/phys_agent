@@ -173,5 +173,40 @@ def plot_variable(root_files: list[str], variable: str, output_name: str,
     return f"wrote {out.relative_to(REPO)}"
 
 
+@beta_tool
+def scan_cut(signal_file: str, background_files: list[str], variable: str,
+             thresholds: list[float], direction: str = ">",
+             base_selection: str = "m2miss > -999") -> str:
+    """Scan a one-dimensional cut and report S, B and S/sqrt(S+B) at each
+    threshold, so the best working point can be chosen (cut & count policy:
+    optimize one variable at a time on top of a fixed base selection).
+
+    Args:
+        signal_file: ROOT file in data/ treated as signal (S).
+        background_files: ROOT files in data/ treated as background (B).
+        variable: branch name to cut on, e.g. "m2miss".
+        thresholds: cut values to test, e.g. [0.5, 1.0, 1.5, 2.0].
+        direction: ">" keeps variable > threshold, "<" keeps variable < threshold.
+        base_selection: numpy boolean expression applied before the scan.
+    """
+    if direction not in (">", "<"):
+        return 'error: direction must be ">" or "<"'
+    sig = _load(signal_file)
+    bkgs = [_load(b) for b in background_files]
+    sig_base = _apply_cut(sig, base_selection)
+    bkg_base = [_apply_cut(b, base_selection) for b in bkgs]
+    lines = [f"threshold  S  B  S/sqrt(S+B)   (base: {base_selection})"]
+    for thr in thresholds:
+        def passing(t, base):
+            var = t[variable]
+            keep = var > thr if direction == ">" else var < thr
+            return int((base & keep).sum())
+        s = passing(sig, sig_base)
+        b = sum(passing(t, m) for t, m in zip(bkgs, bkg_base))
+        fom = s / np.sqrt(s + b) if s + b > 0 else 0.0
+        lines.append(f"{variable} {direction} {thr}: S={s} B={b} FoM={fom:.2f}")
+    return "\n".join(lines)
+
+
 ANALYSIS_TOOLS = [list_decay_modes, generate_mc, make_ntuple, query_ntuple,
-                  plot_variable]
+                  plot_variable, scan_cut]
