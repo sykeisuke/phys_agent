@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 470" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L9,4 L0,8 z" fill="#455a64"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L9,4 L0,8 z" fill="#c62828"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L9,4 L0,8 z" fill="#2e7d32"/>
+    </marker>
+  </defs>
+
+  <!-- background -->
+  <rect x="0" y="0" width="1160" height="470" rx="14" fill="#fafafa" stroke="#e0e0e0"/>
+
+  <!-- ===== User ===== -->
+  <g>
+    <rect x="30" y="90" width="150" height="90" rx="14" fill="#e8f0fe" stroke="#4285f4" stroke-width="2"/>
+    <text x="105" y="128" text-anchor="middle" font-size="30">&#128100;</text>
+    <text x="105" y="160" text-anchor="middle" font-size="17" font-weight="bold" fill="#1a3c8b">User (student)</text>
+  </g>
+
+  <!-- request arrow -->
+  <line x1="180" y1="120" x2="268" y2="120" stroke="#455a64" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="224" y="82" text-anchor="middle" font-size="12.5" fill="#455a64">&#8220;Measure the BF</text>
+  <text x="224" y="97" text-anchor="middle" font-size="12.5" fill="#455a64">of mode X&#8221;</text>
+
+  <!-- feedback arrow (report back to user) -->
+  <line x1="268" y1="155" x2="180" y2="155" stroke="#455a64" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <text x="224" y="175" text-anchor="middle" font-size="12" fill="#78909c">results &#183; questions</text>
+
+  <!-- ===== AI Agent ===== -->
+  <g>
+    <rect x="270" y="80" width="170" height="110" rx="14" fill="#fff3e0" stroke="#fb8c00" stroke-width="2.5"/>
+    <text x="355" y="125" text-anchor="middle" font-size="32">&#129302;</text>
+    <text x="355" y="158" text-anchor="middle" font-size="18" font-weight="bold" fill="#a35a00">AI Agent</text>
+  </g>
+
+  <!-- ===== knowledge / tools cards ===== -->
+  <g>
+    <rect x="60" y="300" width="290" height="120" rx="12" fill="#f5f5f5" stroke="#9e9e9e" stroke-width="1.5"/>
+    <text x="205" y="328" text-anchor="middle" font-size="15" font-weight="bold" fill="#37474f">What the agent can access</text>
+    <text x="80" y="358" font-size="14" fill="#37474f">&#128218;  Knowledge: CLAUDE.md &#183; docs/ &#183; code</text>
+    <text x="80" y="388" font-size="14" fill="#37474f">&#128736;  Tools: EvtGen &#183; Python &#183; uproot</text>
+    <line x1="240" y1="300" x2="330" y2="195" stroke="#9e9e9e" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- ===== workflow panel ===== -->
+  <g>
+    <rect x="480" y="55" width="640" height="180" rx="14" fill="#ffffff" stroke="#90a4ae" stroke-width="1.5"/>
+    <text x="800" y="83" text-anchor="middle" font-size="15" font-weight="bold" fill="#546e7a">Analysis loop (every step needs the student&#8217;s OK)</text>
+
+    <!-- Plan -->
+    <rect x="510" y="105" width="170" height="100" rx="12" fill="#e3f2fd" stroke="#1e88e5" stroke-width="2"/>
+    <text x="595" y="135" text-anchor="middle" font-size="22">&#128203;</text>
+    <text x="595" y="160" text-anchor="middle" font-size="16" font-weight="bold" fill="#0d47a1">Plan</text>
+    <text x="595" y="182" text-anchor="middle" font-size="12.5" fill="#37474f">samples &#183; selections</text>
+    <text x="595" y="197" text-anchor="middle" font-size="12.5" fill="#37474f">quantities to evaluate</text>
+
+    <!-- Execute -->
+    <rect x="720" y="105" width="170" height="100" rx="12" fill="#e8f5e9" stroke="#43a047" stroke-width="2"/>
+    <text x="805" y="135" text-anchor="middle" font-size="22">&#9881;&#65039;</text>
+    <text x="805" y="160" text-anchor="middle" font-size="16" font-weight="bold" fill="#1b5e20">Execute</text>
+    <text x="805" y="182" text-anchor="middle" font-size="12.5" fill="#37474f">generate MC &#183; fast sim</text>
+    <text x="805" y="197" text-anchor="middle" font-size="12.5" fill="#37474f">ntuples &#183; selection</text>
+
+    <!-- Report -->
+    <rect x="930" y="105" width="170" height="100" rx="12" fill="#fce4ec" stroke="#d81b60" stroke-width="2"/>
+    <text x="1015" y="135" text-anchor="middle" font-size="22">&#128200;</text>
+    <text x="1015" y="160" text-anchor="middle" font-size="16" font-weight="bold" fill="#880e4f">Report</text>
+    <text x="1015" y="182" text-anchor="middle" font-size="12.5" fill="#37474f">plots &#183; tables</text>
+    <text x="1015" y="197" text-anchor="middle" font-size="12.5" fill="#37474f">short summary</text>
+
+    <line x1="680" y1="155" x2="712" y2="155" stroke="#455a64" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <line x1="890" y1="155" x2="922" y2="155" stroke="#455a64" stroke-width="2.5" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- agent -> workflow -->
+  <line x1="440" y1="135" x2="472" y2="135" stroke="#455a64" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- ===== approval + output ===== -->
+  <!-- decision -->
+  <g>
+    <polygon points="800,290 865,340 800,390 735,340" fill="#fffde7" stroke="#f9a825" stroke-width="2"/>
+    <text x="800" y="335" text-anchor="middle" font-size="15" font-weight="bold" fill="#795500">OK to</text>
+    <text x="800" y="355" text-anchor="middle" font-size="15" font-weight="bold" fill="#795500">proceed?</text>
+  </g>
+
+  <!-- report -> decision -->
+  <path d="M 1015 205 L 1015 340 L 873 340" fill="none" stroke="#455a64" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- no -> back to plan -->
+  <path d="M 735 340 L 595 340 L 595 213" fill="none" stroke="#c62828" stroke-width="2.5" marker-end="url(#arrowRed)"/>
+  <text x="660" y="330" text-anchor="middle" font-size="13" font-weight="bold" fill="#c62828">NO &#183; feedback</text>
+
+  <!-- yes -> final output -->
+  <line x1="800" y1="390" x2="800" y2="418" stroke="#2e7d32" stroke-width="2.5" marker-end="url(#arrowGreen)"/>
+  <text x="840" y="410" font-size="13" font-weight="bold" fill="#2e7d32">YES &#183; approve</text>
+  <g>
+    <rect x="640" y="420" width="320" height="40" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+    <text x="800" y="446" text-anchor="middle" font-size="15" font-weight="bold" fill="#1b5e20">&#127942;  Final output: analysis note &#183; plots &#183; tables</text>
+  </g>
+</svg>
