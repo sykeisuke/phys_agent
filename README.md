@@ -31,6 +31,16 @@ approval at each step**.
 Instructions and conventions for the agent are collected in
 [CLAUDE.md](CLAUDE.md) (the *Knowledge* item in the figure).
 
+A skeleton implementation of this loop lives in [agent/](agent/README.md):
+an LLM drives the pipeline below through typed tools
+(`generate_mc`, `make_ntuple`, `query_ntuple`, `plot_variable`), with the
+approval gate implemented as a tool the model must call first. Try it with
+
+```bash
+pip install anthropic   # once; needs an Anthropic API key
+python -m agent "Compare m2_miss between B0 -> D* tau nu and B0 -> D* mu nu"
+```
+
 ---
 
 ## 2. Repository layout
@@ -263,10 +273,32 @@ python fastsim/make_ntuple.py data/bkg_dststmunu.hepmc  data/bkg_dststmunu.root 
 The D\*\*μν background peaks at m²_miss ≈ 0.3–1 GeV² (one missed π0),
 between the normalization peak and the broad signal distribution.
 
-### Student tasks (Phase 3b)
+### First-pass BF measurement (Phase 3b)
 
-Follow the analysis pattern of section 7: optimize the selection on the
-ntuple variables and extract B(B0 → D\*τν) with a counting analysis.
+A complete counting analysis on 10⁶ generic BB̄ events treated as the
+dataset ( `analysis/measure_bf_dsttaunu.py`; the `true_mode` ntuple branch
+labels each candidate's true B decay):
+
+```bash
+# 5 x 200k generic events (see section 4), then:
+python analysis/measure_bf_dsttaunu.py --signal data/signal_taunu.root \
+    --data data/generic_*.root --n-sig-gen 5000 --n-b0 <N> --truth-taunu <N>
+```
+
+| Quantity | Value |
+|---|---|
+| Selection | \|m_D0 − 1.865\| < 20 MeV, \|Δm − 145.4\| < 2.5 MeV, m²_miss > 1.5 GeV² |
+| Efficiency (signal MC) | 49.4 ± 0.7 % |
+| Candidates in SR | 285 (background 242, MC truth) |
+| **B(B0 → D\*τν)** | **(1.97 ± 1.05 (stat)) %** |
+| Generator truth | 1.48 % → closure at +0.5σ |
+
+![BF measurement m2miss](docs/figures/bf_m2miss_data.png)
+
+**Student tasks**: replace the MC-truth background subtraction with a
+sideband/control-region method; improve S/√(S+B) ≈ 2.5 (the background is
+flat in m²_miss — tag-side information is needed, which motivates Phase 4);
+study the luminosity needed for a 10% measurement.
 
 ---
 
