@@ -1,11 +1,11 @@
 # Physics Analysis Agent
 
-A framework for doing particle-physics analyses **together with an AI agent**. 
-The agent is not tied to one measurement: it is aimed at **any analysis that fits the pipeline below** —
-and it is best suited (at least at first) to **relatively simple analyses,
-such as branching-fraction measurements**, where the workflow is
-well-defined: generate MC, simulate the detector response, build ntuples,
-optimize a selection, count events.
+A framework for doing particle-physics analyses **together with an AI
+agent**. The agent is not tied to one measurement: it is aimed at **any
+analysis that fits the pipeline below** — and it is best suited (at least
+at first) to **relatively simple analyses, such as branching-fraction
+measurements**, where the workflow is well-defined: generate MC, simulate
+the detector response, build ntuples, optimize a selection, count events.
 
 ```
 EvtGen MC generation  →  fast detector simulation  →  ROOT ntuples (uproot)
@@ -22,8 +22,8 @@ adding an EvtGen dec file. A complete worked example
 
 ## 1. AI-agent workflow
 
-The agent advances an analysis in the loop below, with **user (student)
-approval at each step**.
+The agent advances an analysis in the loop below, with **user approval
+at each step**.
 
 ![AI agent workflow](docs/figures/agent_workflow.svg)
 
@@ -113,35 +113,21 @@ dec file to add a mode):
 |---|---|---|
 | `B0_Dsttaunu.dec` | B0 → D\*⁻τ⁺ν, τ → μνν | ISGW2 |
 | `B0_Dstmunu.dec` | B0 → D\*⁻μ⁺ν | ISGW2 |
-| `B0_Dststmunu.dec` | B0 → D\*\*μν, D\*\* → D\*π0 (D₁, D₂\*) | ISGW2 |
-| `B_DsstKstmunu.dec` | B⁻ → D_s\*⁺K\*⁻μν | PHSP |
-| `B_DsK1munu.dec` | B⁻ → D_s⁺K₁(1270)⁻μν | PHSP |
-| `B_Ds1Kmunu.dec` | B⁻ → D_s1(2536)⁺K⁻μν | PHSP |
+| `B0_Kstmumu.dec` | B0 → K\*0μ⁺μ⁻ (b → sℓℓ) | BTOSLLBALL |
 | `generic_bbbar.dec` | generic Υ(4S) → BB̄ (nothing forced) | DECAY.DEC |
 
-Example (the worked-example samples):
+(A few further mode files live in `generation/dec/`.) Example:
 
 ```bash
-./generation/bin/generate generation/dec/B0_Dsttaunu.dec  5000 data/signal_taunu.hepmc  1 generation/dec/tau_native.dec
-./generation/bin/generate generation/dec/B0_Dstmunu.dec   5000 data/norm_munu.hepmc     2 generation/dec/tau_native.dec
-./generation/bin/generate generation/dec/B0_Dststmunu.dec 5000 data/bkg_dststmunu.hepmc 3 generation/dec/tau_native.dec
-```
-
-For these charged-B modes, `fastsim/make_ntuple_ds.py` (truth-seeded,
-mode-agnostic: reconstructs any forced B → hadrons + μν) produces the
-ntuples, and `analysis/sensitivity_ds.py` turns the efficiencies into
-expected yields and statistical precisions at 1 ab⁻¹:
-
-```bash
-python fastsim/make_ntuple_ds.py data/sig_dsstkst.hepmc data/sig_dsstkst.root 10 20
-python analysis/sensitivity_ds.py
+./generation/bin/generate generation/dec/B0_Dsttaunu.dec 5000 data/signal_taunu.hepmc 1 generation/dec/tau_native.dec
+./generation/bin/generate generation/dec/B0_Dstmunu.dec  5000 data/norm_munu.hepmc    2 generation/dec/tau_native.dec
+./generation/bin/generate generation/dec/B0_Kstmumu.dec  5000 data/sig_kstmumu.hepmc 30 generation/dec/tau_native.dec
 ```
 
 Generation is fast (~2000 events/s) and HepMC ascii files take ~6 KB/event,
 so samples are **regenerated on demand from fixed seeds** rather than stored
-or committed. 4-body semileptonic decays use PHSP (EvtGen has no dedicated
-form-factor model for those topologies); forced-mode samples give signal and
-background **shapes**, with absolute normalization applied at analysis time.
+or committed. Forced-mode samples give signal and background **shapes**,
+with absolute normalization applied at analysis time.
 
 ### Continuum background
 
@@ -180,7 +166,7 @@ model in `fastsim/smear.py` is applied to every charged track:
 Events in which any signal-chain track is lost are discarded as
 reconstruction failures. The detector model is deliberately minimal and
 lives in one dataclass — refining it (p/θ-dependent resolution, particle ID,
-neutrals) is itself a good student project.
+neutrals) is a natural extension.
 
 ---
 
@@ -235,8 +221,10 @@ events = uproot.open("data/signal_taunu.root")["events"].arrays(library="np")
 
 `mode_id` is a per-sample label chosen on the command line, so ntuples from
 different samples can be concatenated and still identified. The candidate
-finder currently targets D\* chains; generalizing it to the charged-B / D_s
-modes is a roadmap item.
+finder in `make_ntuple.py` targets D\* chains; `make_ntuple_exclusive.py`
+is a truth-seeded, mode-agnostic producer for any forced exclusive mode
+(B → hadrons + μν, or fully charged B → hadrons + μ⁺μ⁻), adding the
+full-reconstruction variables `mbc`, `delta_e`, and `m_ll`.
 
 ---
 
@@ -253,8 +241,8 @@ Every BF measurement follows the same steps, all starting from the ntuples:
    using N_BB and the known sub-mode branching fractions.
 4. **Report**: plots + a short note with the numbers in tables.
 
-The agent prepares samples and infrastructure; **steps 2–4 are the
-student's analysis**.
+The agent prepares samples and infrastructure and can carry out steps 2–4
+itself — or leave them to the user, depending on the review mode.
 
 ---
 
@@ -277,7 +265,7 @@ has large missing energy**. The discriminating variables are:
 | p\*_ℓ | lepton momentum in the B rest frame | secondary leptons from τ are soft |
 | q² | (p_B − p_D\*)² | τ modes sit at high q² due to the mass threshold |
 
-### Truth level (Phase 1)
+### Truth level
 
 ```bash
 python analysis/plot_m2miss.py data/signal_taunu.hepmc data/norm_munu.hepmc
@@ -291,7 +279,7 @@ The μν mode peaks sharply at m²_miss = 0, while the τν mode is broad and
 positive because of the three neutrinos. In p\*_ℓ the secondary muon from
 the τ is clearly softer.
 
-### After fast simulation (Phase 2)
+### After fast simulation
 
 ```bash
 python fastsim/apply_fastsim.py data/signal_taunu.hepmc data/norm_munu.hepmc 42
@@ -311,7 +299,7 @@ The μν-mode m²_miss peak, delta-like at truth level, broadens to
 broad τν distribution, so the discriminating power survives. p\*_ℓ and q²
 are essentially unchanged (their widths are physics-dominated).
 
-### Ntuples with the dominant background (Phase 3a)
+### Ntuples with the dominant background
 
 | mode_id | Sample | Role |
 |---|---|---|
@@ -320,6 +308,7 @@ are essentially unchanged (their widths are physics-dominated).
 | 2 | B0 → D\*\*μν, D\*\* → D\*π0 | dominant background (semileptonic feed-down) |
 
 ```bash
+./generation/bin/generate generation/dec/B0_Dststmunu.dec 5000 data/bkg_dststmunu.hepmc 3 generation/dec/tau_native.dec
 python fastsim/make_ntuple.py data/signal_taunu.hepmc   data/signal_taunu.root   0 42
 python fastsim/make_ntuple.py data/norm_munu.hepmc      data/norm_munu.root      1 43
 python fastsim/make_ntuple.py data/bkg_dststmunu.hepmc  data/bkg_dststmunu.root  2 44
@@ -332,7 +321,7 @@ python fastsim/make_ntuple.py data/bkg_dststmunu.hepmc  data/bkg_dststmunu.root 
 The D\*\*μν background peaks at m²_miss ≈ 0.3–1 GeV² (one missed π0),
 between the normalization peak and the broad signal distribution.
 
-### First-pass BF measurement (Phase 3b)
+### BF measurement
 
 A complete counting analysis on a **luminosity-matched pseudo-dataset**:
 10⁶ generic BB̄ events + 2.4 × 10⁶ continuum events
@@ -359,8 +348,8 @@ The pseudo-dataset corresponds to only ~0.9 fb⁻¹; scaling the statistical
 error by 1/√L gives a **~4.5 % relative measurement at 1 ab⁻¹ (Belle II
 benchmark)** for this untagged selection. The background is dominated by
 real D\* paired with an unrelated muon (tag side or charm decays) — neither
-p\*_ℓ nor cos θ_BY separates it, which is the quantitative motivation for
-tag-side reconstruction in Phase 4.
+p\*_ℓ nor cos θ_BY separates it — the ROE energy consistency cut
+(section 6) is what recovers the sensitivity.
 
 ### Template fit (pyhf)
 
@@ -386,23 +375,38 @@ published analyses). The fit uses the full shape, and the ROE energy cut
 
 (The fit's central value closes exactly by construction — the signal
 template is the truth component of the same pseudo-dataset; taking the
-template from the independent forced signal MC is a student task.)
+template from the independent forced signal MC is a planned refinement.)
 
-**Student tasks**: replace the MC-truth background subtraction with a
-sideband/control-region method; take the fit's signal template from the
-independent signal MC; verify the 1/√L scaling with toy datasets;
-quantify how much a tag (even a crude one) improves S/B.
+**Possible extensions**: a sideband/control-region background estimate
+instead of the MC-truth subtraction; a signal template from the independent
+signal MC; toy studies of the 1/√L scaling; a crude tag-side
+reconstruction.
 
 ---
 
-## 9. Roadmap
+## 9. Second demonstration: B0 → K\*0μ⁺μ⁻
 
-- [x] **Phase 1**: local EvtGen generation + truth-level distributions (worked example)
-- [x] **Phase 2**: fast sim (momentum resolution, acceptance, efficiency smearing)
-- [x] **Phase 3a**: background sample + ROOT ntuple production (uproot)
-- [ ] **Phase 3b**: selection optimization + branching-fraction extraction (student task)
-- [ ] **Phase 4**: generalize the ntuple producer to the charged-B / D_s modes; generic BB̄ background; systematics
-- [ ] **Final**: automated analysis note (Markdown/LaTeX) per measured mode
+To show the pipeline is not tied to missing-energy modes, the rare decay
+B0 → K\*0(→ K⁺π⁻)μ⁺μ⁻ (b → sℓℓ, `BTOSLLBALL` form-factor model) runs
+through the identical chain. With no neutrino the candidate is fully
+reconstructed, and the standard full-reconstruction variables apply
+(`mbc`, `delta_e` — the basf2 `Mbc`/`deltaE` — plus the dimuon mass `m_ll`
+for the charmonium vetoes):
+
+```bash
+./generation/bin/generate generation/dec/B0_Kstmumu.dec 5000 data/sig_kstmumu.hepmc 30 generation/dec/tau_native.dec
+python fastsim/make_ntuple_exclusive.py data/sig_kstmumu.hepmc data/sig_kstmumu.root 20 31
+```
+
+![Kst mumu demo](docs/figures/kstmumu_demo.png)
+
+Efficiency 56 % (4 tracks); M_bc peaks at m_B with σ ≈ 15 MeV. The dashed
+lines mark the J/ψ and ψ(2S) windows where the charmonium peaking
+background (B → J/ψ K\*, J/ψ → μμ — present in the generic BB̄ sample at
+its known branching fraction) is vetoed in real analyses. Peaking
+backgrounds that rely on particle misidentification (e.g. B0 → K\*0π⁺π⁻
+with π → μ fakes) are **not** modeled: the fast simulation has no PID layer
+— adding fake rates is a natural extension.
 
 ---
 
