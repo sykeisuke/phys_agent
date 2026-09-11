@@ -26,32 +26,10 @@ adding an EvtGen dec file. A complete worked example
 The agent advances an analysis in the loop below, with **user (student)
 approval at each step**.
 
-```mermaid
-flowchart LR
-    U(["👤 User<br/>(student)"]) -->|"e.g. Measure the BF<br/>of decay mode X"| A(["🤖 AI Agent"])
-
-    subgraph K["1 · What the AI can access"]
-        direction TB
-        K1["📚 Internal knowledge<br/>docs/ · CLAUDE.md · code"]
-        K2["🛠 Analysis tools<br/>EvtGen · Python · uproot"]
-    end
-
-    subgraph W["2 · Analysis workflow"]
-        direction TB
-        P["📋 Plan<br/>understand goal, make plan"] --> E["⚙️ Execute<br/>generate MC, select events,<br/>estimate background"]
-        E --> R["📈 Report<br/>plots, results, summary"]
-    end
-
-    A --> W
-    K -.-> A
-
-    R --> D{"3 · OK to<br/>proceed?"}
-    D -->|YES · approve| N["4 · Final output<br/>analysis note (Markdown/LaTeX)<br/>plots · tables · conclusions"]
-    D -->|NO · feedback| P
-```
+![AI agent workflow](docs/figures/agent_workflow.svg)
 
 Instructions and conventions for the agent are collected in
-[CLAUDE.md](CLAUDE.md) (the *Internal Knowledge* box in the figure).
+[CLAUDE.md](CLAUDE.md) (the *Knowledge* item in the figure).
 
 ---
 
