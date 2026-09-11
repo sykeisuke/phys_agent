@@ -47,30 +47,62 @@ level, intuition before equations.
 """
 
 
-@beta_tool
-def request_approval(plan: str) -> str:
-    """Present the analysis plan to the student and wait for approval.
-    Must be called once, before any MC generation or analysis tool.
+REVIEWER_PROMPT = """\
+You are a strict but constructive physics-analysis reviewer at a B factory.
+You are shown an analysis PLAN produced by another agent. Approve it only if:
+- the samples, event counts, and seeds are stated and reasonable (<= 2M events);
+- the selection is cut & count with named variables (no NN/BDT);
+- it says which existing analysis (if any) the variable choices follow;
+- it states what will be reported (efficiencies, yields, plots).
+Reply with exactly one line starting with either
+"APPROVE" or "REVISE: <specific, actionable feedback>".
+"""
 
-    Args:
-        plan: the plan as a short Markdown bullet list.
+
+def make_approval_tool(review: str, client, model: str):
+    """Build the approval gate for the chosen review mode.
+
+    'human' (default): the student answers y/N on the terminal.
+    'ai'  : a second LLM instance reviews the plan against the checklist —
+            use once the workflow is established and trusted.
     """
-    print("\n=== PROPOSED PLAN ===\n" + plan + "\n=====================")
-    answer = input("Approve this plan? [y/N] ").strip().lower()
-    if answer in ("y", "yes"):
-        return "approved — proceed"
-    reason = input("Feedback for the agent: ").strip()
-    return f"rejected — revise the plan. Student feedback: {reason}"
+    @beta_tool
+    def request_approval(plan: str) -> str:
+        """Present the analysis plan for review and wait for approval.
+        Must be called once, before any MC generation or analysis tool.
+
+        Args:
+            plan: the plan as a short Markdown bullet list.
+        """
+        print("\n=== PROPOSED PLAN ===\n" + plan + "\n=====================")
+        if review == "ai":
+            verdict = client.messages.create(
+                model=model, max_tokens=1024, system=REVIEWER_PROMPT,
+                messages=[{"role": "user", "content": plan}])
+            text = next(b.text for b in verdict.content if b.type == "text").strip()
+            print(f"[AI reviewer] {text}")
+            if text.upper().startswith("APPROVE"):
+                return "approved by the AI reviewer — proceed"
+            return f"rejected — revise the plan. Reviewer feedback: {text}"
+        answer = input("Approve this plan? [y/N] ").strip().lower()
+        if answer in ("y", "yes"):
+            return "approved — proceed"
+        reason = input("Feedback for the agent: ").strip()
+        return f"rejected — revise the plan. Student feedback: {reason}"
+
+    return request_approval
 
 
-def run(task: str, model: str = MODEL, max_turns: int = 30) -> None:
+def run(task: str, model: str = MODEL, max_turns: int = 30,
+        review: str = "human") -> None:
     """Run one analysis task through the Plan -> Execute -> Report loop."""
     client = anthropic.Anthropic()
+    approval = make_approval_tool(review, client, model)
     runner = client.beta.messages.tool_runner(
         model=model,
         max_tokens=16000,
         system=SYSTEM_PROMPT,
-        tools=[request_approval, *ANALYSIS_TOOLS],
+        tools=[approval, *ANALYSIS_TOOLS],
         messages=[{"role": "user", "content": task}],
         # Server-side fallback: if a safety classifier declines a request,
         # it is retried on a fallback model instead of failing outright.

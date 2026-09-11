@@ -21,6 +21,19 @@ python -m agent "Compare m2_miss between B0 -> D* tau nu and B0 -> D* mu nu with
 
 The agent will print a plan and wait for `y/N` before touching the pipeline.
 
+### Review modes
+
+The approval gate between Plan and Execute has two modes
+(`--review human|ai`, default `human`):
+
+- **human** — the student reads the plan and answers y/N; rejection
+  feedback goes back to the agent as a tool result.
+- **ai** — a second LLM instance reviews the plan against a fixed checklist
+  (samples/seeds stated, cut & count, follows a named existing analysis,
+  deliverables defined) and replies APPROVE / REVISE. Start every new
+  workflow in human mode; switch to ai review once the workflow is
+  established and trusted.
+
 ## Structure
 
 | File | Role |

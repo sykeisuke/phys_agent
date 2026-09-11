@@ -49,20 +49,28 @@ python -m agent "Compare m2_miss between B0 -> D* tau nu and B0 -> D* mu nu"
 phys_agent/
 ├── README.md               # this file (overall instructions)
 ├── CLAUDE.md               # AI-agent conventions and physics conventions
+├── agent/                  # the AI-agent skeleton (see section 1 / agent/README.md)
+│   ├── runner.py           # Plan -> approval -> Execute -> Report loop
+│   ├── tools.py            # typed pipeline tools exposed to the LLM
+│   └── __main__.py         # CLI: python -m agent "<task>"
 ├── docs/
+│   ├── basf2.md            # basf2 variable mapping and migration path
 │   └── figures/            # Feynman diagrams and report figures
-├── generation/             # MC generation (EvtGen)
-│   ├── dec/                # user decay files, one per mode (see section 4)
+├── generation/             # MC generation
+│   ├── dec/                # EvtGen user decay files, one per mode (section 4)
 │   ├── src/generate.cc     # EvtGen driver (HepMC3 output)
+│   ├── generate_continuum.py  # Pythia8 continuum -> ntuple, one pass
+│   ├── basf2/              # basf2 steering-file templates (untested here)
 │   └── build.sh            # build script
 ├── scripts/
 │   └── env.sh              # conda environment activation
-├── fastsim/                # simple detector response (see section 5)
+├── fastsim/                # simple detector response (section 5)
 │   ├── smear.py            # detector model (resolution, acceptance, efficiency)
 │   ├── apply_fastsim.py    # smearing + truth-vs-smeared comparison plots
 │   └── make_ntuple.py      # fast sim -> flat ROOT ntuple (uproot)
 ├── analysis/
-│   └── plot_m2miss.py      # truth-level plots for the worked example
+│   ├── plot_m2miss.py      # truth-level plots for the worked example
+│   └── measure_bf_dsttaunu.py  # counting BF measurement on the pseudo-dataset
 ├── data/                   # generated MC and ntuples (not tracked by git)
 └── plots/                  # output plots
 ```
@@ -322,14 +330,40 @@ python analysis/measure_bf_dsttaunu.py --signal data/signal_taunu.root \
 ![BF measurement m2miss](docs/figures/bf_m2miss_data.png)
 
 The pseudo-dataset corresponds to only ~0.9 fb⁻¹; scaling the statistical
-error by 1/√L gives a **~4 % relative measurement at the Belle luminosity
-(711 fb⁻¹)** for this untagged selection. The background is dominated by
+error by 1/√L gives a **~4.5 % relative measurement at 1 ab⁻¹ (Belle II
+benchmark)** for this untagged selection. The background is dominated by
 real D\* paired with an unrelated muon (tag side or charm decays) — neither
 p\*_ℓ nor cos θ_BY separates it, which is the quantitative motivation for
 tag-side reconstruction in Phase 4.
 
+### Template fit (pyhf)
+
+The counting analysis is upgraded to a binned m²_miss template fit with
+**[pyhf](https://pyhf.readthedocs.io)** (`pip install pyhf iminuit`):
+
+```bash
+python analysis/fit_m2miss.py --data data/generic_*.root \
+    --continuum data/continuum_*.root --cont-weight 0.995
+```
+
+Model: μ × S + B with per-bin background uncertainties (MC statistics ⊕ a
+conservative 10 % normalization, to be replaced by proper estimates from
+published analyses). Using the full shape — the μν peak and the sidebands
+constrain the background under the signal — the uncertainty **halves**
+relative to counting:
+
+| Method | BF(B0 → D\*τν) | relative stat. @ 1 ab⁻¹ |
+|---|---|---|
+| cut & count | (2.77 ± 2.19) % | ~4.5 % |
+| pyhf template fit | (1.48 ± 1.18) % | **~2.4 %** |
+
+(The fit's central value closes exactly by construction — the signal
+template is the truth component of the same pseudo-dataset; taking the
+template from the independent forced signal MC is a student task.)
+
 **Student tasks**: replace the MC-truth background subtraction with a
-sideband/control-region method; verify the 1/√L scaling with toy datasets;
+sideband/control-region method; take the fit's signal template from the
+independent signal MC; verify the 1/√L scaling with toy datasets;
 quantify how much a tag (even a crude one) improves S/B.
 
 ---
