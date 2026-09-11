@@ -1,8 +1,7 @@
 # Physics Analysis Agent
 
-A framework for doing particle-physics analyses **together with an AI agent**,
-developed as a student research training project. The agent is not tied to one
-measurement: it is aimed at **any analysis that fits the pipeline below** —
+A framework for doing particle-physics analyses **together with an AI agent**. 
+The agent is not tied to one measurement: it is aimed at **any analysis that fits the pipeline below** —
 and it is best suited (at least at first) to **relatively simple analyses,
 such as branching-fraction measurements**, where the workflow is
 well-defined: generate MC, simulate the detector response, build ntuples,
@@ -321,4 +320,4 @@ shipped with [EvtGen](https://evtgen.hepforge.org/), which is itself GPL-3.0.
 
 ---
 
-*Keisuke Yoshihara (kyoshiha@hawaii.edu) — undergraduate research training project, UH Mānoa*
+*Keisuke Yoshihara (kyoshiha@hawaii.edu) — UH Mānoa*
