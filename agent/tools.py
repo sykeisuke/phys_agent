@@ -95,6 +95,30 @@ def make_ntuple(hepmc_file: str, output_name: str, mode_id: int, seed: int) -> s
     return proc.stdout.strip()
 
 
+@beta_tool
+def generate_continuum(n_events: int, output_name: str, seed: int) -> str:
+    """Generate continuum e+e- -> qq (u,d,s,c) background with Pythia8,
+    directly into a ROOT ntuple (same branches as make_ntuple). The
+    printout reports the cross section needed for luminosity weighting.
+
+    Args:
+        n_events: number of events (1 to 2,000,000; ~7000 events/s).
+        output_name: output ROOT file name, e.g. "continuum_0.root" (written to data/).
+        seed: random seed, fixed for reproducibility.
+    """
+    if not 1 <= n_events <= MAX_EVENTS:
+        return f"error: n_events must be within [1, {MAX_EVENTS}]"
+    out = DATA_DIR / _safe_name(output_name, ".root")
+    DATA_DIR.mkdir(exist_ok=True)
+    proc = subprocess.run(
+        ["python", str(REPO / "generation" / "generate_continuum.py"),
+         str(n_events), str(out), str(seed)],
+        capture_output=True, text=True, timeout=3600)
+    if proc.returncode != 0:
+        return f"continuum generation failed:\n{proc.stderr[-2000:]}"
+    return "\n".join(proc.stdout.strip().splitlines()[-2:])
+
+
 def _load(root_file: str, columns=None):
     import uproot
     path = DATA_DIR / _safe_name(root_file, ".root")
@@ -208,5 +232,5 @@ def scan_cut(signal_file: str, background_files: list[str], variable: str,
     return "\n".join(lines)
 
 
-ANALYSIS_TOOLS = [list_decay_modes, generate_mc, make_ntuple, query_ntuple,
-                  plot_variable, scan_cut]
+ANALYSIS_TOOLS = [list_decay_modes, generate_mc, generate_continuum,
+                  make_ntuple, query_ntuple, plot_variable, scan_cut]
