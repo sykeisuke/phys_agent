@@ -29,9 +29,10 @@ import uproot
 
 M_D0, DM = 1.8648, 0.14543
 CUT_M_D0, CUT_DELTA_M, CUT_R2 = 0.020, 0.0025, 0.30
+E_TAG_MAX = 4.0            # ROE energy consistency (CM); np.inf disables
 BINS = np.linspace(-2.0, 10.0, 25)
 
-COLS = ["m2miss", "m_d0", "delta_m", "r2", "true_mode"]
+COLS = ["m2miss", "m_d0", "delta_m", "r2", "e_tag_cm", "true_mode"]
 
 
 def load(paths):
@@ -42,7 +43,7 @@ def load(paths):
 def preselect(t):
     return (np.abs(t["m_d0"] - M_D0) < CUT_M_D0) & \
            (np.abs(t["delta_m"] - DM) < CUT_DELTA_M) & \
-           (t["r2"] < CUT_R2)
+           (t["r2"] < CUT_R2) & (t["e_tag_cm"] < E_TAG_MAX)
 
 
 def hists(samples):

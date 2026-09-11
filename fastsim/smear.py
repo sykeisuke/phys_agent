@@ -21,6 +21,10 @@ class DetectorConfig:
     theta_min: float = np.radians(17.0)    # polar-angle acceptance (lab)
     theta_max: float = np.radians(150.0)
     track_eff: float = 0.95                # per-track detection efficiency
+    # photons (ECL-like, used for the rest-of-event reconstruction)
+    photon_e_min: float = 0.05             # energy threshold [GeV]
+    photon_res_a: float = 0.02             # sigma_E/E = a/sqrt(E) (+) b
+    photon_res_b: float = 0.01
 
 
 def theta_lab(p4):
@@ -56,3 +60,17 @@ def detect_track(p4, cfg: DetectorConfig, rng: np.random.Generator):
     if rng.random() > cfg.track_eff:
         return None
     return smear_track(p4, cfg, rng)
+
+
+def detect_photon(p4, cfg: DetectorConfig, rng: np.random.Generator):
+    """ECL-like photon response: acceptance + energy threshold + Gaussian
+    energy smearing sigma_E/E = a/sqrt(E) (+) b, direction unchanged.
+
+    Returns the smeared (massless) four-vector, or None if undetected.
+    """
+    e = p4[0]
+    if e < cfg.photon_e_min or not in_acceptance(p4, cfg):
+        return None
+    sigma = e * np.hypot(cfg.photon_res_a / np.sqrt(e), cfg.photon_res_b)
+    e_new = max(e + sigma * rng.standard_normal(), 1e-6)
+    return (e_new / e) * p4

@@ -6,3 +6,4 @@ generation/bin/
 *.parquet
 __pycache__/
 .DS_Store
+paper/

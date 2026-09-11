@@ -34,7 +34,7 @@ import pyhepmc
 import uproot
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from smear import DetectorConfig, detect_track
+from smear import DetectorConfig, detect_photon, detect_track
 
 B_PIDS = {511, -511}
 DST_PIDS = {413, -413}
@@ -138,6 +138,57 @@ def fox_wolfram_r2(event):
     return h2 / h0
 
 
+INVISIBLE = NEUTRINOS | {130, 2112}  # neutrinos, K_L, neutrons: not detected
+
+CHARGE = {211: 1, 321: 1, 2212: 1, 13: -1, 11: -1}  # charge by |pid| * sign(pid)
+
+
+def charge_of(pid):
+    q = CHARGE.get(abs(pid), 0)
+    return q if pid > 0 else -q
+
+
+def roe_tag_momentum(event, used_ids, cfg, rng):
+    """Rest-of-event (ROE) four-momentum: every detected stable particle
+    (smeared charged tracks + ECL-like photons) except the signal-side
+    candidates. Returns (p_tag, n_detected)."""
+    p = np.zeros(4)
+    n = 0
+    q = 0
+    for part in event.particles:
+        if part.end_vertex or part.id in used_ids:
+            continue
+        pid = abs(part.pid)
+        if pid in INVISIBLE:
+            continue
+        v = four_vec(part)
+        if pid == 22:
+            s = detect_photon(v, cfg, rng)
+        elif pid in CHARGED_STABLE:
+            s = detect_track(v, cfg, rng)
+        else:
+            continue
+        if s is not None:
+            p += s
+            n += 1
+            q += charge_of(part.pid)
+    return p, n, q
+
+
+def m2miss_roe_constrained(p_tag, pY):
+    """m2_miss with the B direction taken from the ROE: in the CM frame the
+    signal B recoils against the tag, so its direction is -p_tag(CM); its
+    energy and momentum magnitude come from the beam constraint. Robust
+    against ROE energy mismeasurement (only the direction is used)."""
+    ptag_cm = to_cm(p_tag)
+    mag = np.linalg.norm(ptag_cm[1:])
+    if mag < 1e-9:
+        return np.nan
+    direction = -ptag_cm[1:] / mag
+    pB = np.array([E_B_CM, *(P_B_MAG * direction)])
+    return minv2(pB - pY)
+
+
 def find_candidate(event):
     """First D* + charge-correlated muon pair in the event, or None.
     Returns (dst, d0_tracks, slow_pi, mu, B_or_None)."""
@@ -175,7 +226,8 @@ def main():
     rng = np.random.default_rng(seed)
 
     cols = {k: [] for k in [
-        "m2miss", "plep_star", "q2", "m_d0", "delta_m", "cos_by", "r2",
+        "m2miss", "m2miss_roe", "e_tag_cm", "m_tag", "n_roe", "q_roe",
+        "plep_star", "q2", "m_d0", "delta_m", "cos_by", "r2",
         "p_lep_lab", "costh_lep_lab", "p_dst_lab",
         "m2miss_true", "plep_star_true", "q2_true",
         "true_mode", "mode_id", "event"]}
@@ -207,6 +259,13 @@ def main():
             pMu_cm = to_cm(sm_mu)
             pY = pDst_cm + pMu_cm
             pY_mag = np.linalg.norm(pY[1:])
+            used = {t.id for t in d0_tracks} | {slow_pi.id, mu.id}
+            p_tag, n_roe, q_roe = roe_tag_momentum(event, used, cfg, rng)
+            cols["m2miss_roe"].append(m2miss_roe_constrained(p_tag, pY))
+            cols["e_tag_cm"].append(to_cm(p_tag)[0])
+            cols["m_tag"].append(minv(p_tag))
+            cols["n_roe"].append(n_roe)
+            cols["q_roe"].append(q_roe)
             cols["m2miss"].append(minv2(P_B_CM - pY))
             cols["plep_star"].append(np.linalg.norm(pMu_cm[1:]))
             cols["q2"].append(minv2(P_B_CM - pDst_cm))
@@ -237,7 +296,8 @@ def main():
             cols["mode_id"].append(mode_id)
             cols["event"].append(ievt)
 
-    arrays = {k: np.array(v, dtype=np.int32 if k in ("true_mode", "mode_id", "event")
+    arrays = {k: np.array(v, dtype=np.int32
+                          if k in ("true_mode", "mode_id", "event", "n_roe", "q_roe")
                           else np.float64) for k, v in cols.items()}
     with uproot.recreate(out_path) as f:
         f["events"] = arrays
