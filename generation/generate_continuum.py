@@ -23,9 +23,10 @@ import pythia8
 import uproot
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "fastsim"))
-from smear import DetectorConfig, detect_track
-from make_ntuple import (CHARGED_STABLE, NEUTRINOS, E_B_CM, M_B, P_B_CM,
-                         P_B_MAG, minv, minv2, to_cm)
+from smear import DetectorConfig, detect_photon, detect_track
+from make_ntuple import (CHARGED_STABLE, INVISIBLE, NEUTRINOS, E_B_CM, M_B,
+                         P_B_CM, P_B_MAG, charge_of, m2miss_roe_constrained,
+                         minv, minv2, to_cm)
 
 
 def four_vec(p):
@@ -102,7 +103,8 @@ def main():
     py.init()
 
     cols = {k: [] for k in [
-        "m2miss", "plep_star", "q2", "m_d0", "delta_m", "cos_by", "r2",
+        "m2miss", "m2miss_roe", "e_tag_cm", "m_tag", "n_roe", "q_roe",
+        "plep_star", "q2", "m_d0", "delta_m", "cos_by", "r2",
         "p_lep_lab", "costh_lep_lab", "p_dst_lab",
         "m2miss_true", "plep_star_true", "q2_true",
         "true_mode", "mode_id", "event"]}
@@ -134,6 +136,33 @@ def main():
         pMu_cm = to_cm(sm_mu)
         pY = pDst_cm + pMu_cm
         pY_mag = np.linalg.norm(pY[1:])
+        # rest-of-event tag (same definition as make_ntuple.roe_tag_momentum)
+        used = set(d0_tracks) | {slow_i, mu_i}
+        p_tag = np.zeros(4)
+        n_roe = q_roe = 0
+        for j in range(1, ev.size()):
+            pj = ev[j]
+            if not pj.isFinal() or j in used:
+                continue
+            pid = abs(pj.id())
+            if pid in INVISIBLE:
+                continue
+            v = four_vec(pj)
+            if pid == 22:
+                s = detect_photon(v, cfg, rng)
+            elif pid in CHARGED_STABLE:
+                s = detect_track(v, cfg, rng)
+            else:
+                continue
+            if s is not None:
+                p_tag += s
+                n_roe += 1
+                q_roe += charge_of(pj.id())
+        cols["m2miss_roe"].append(m2miss_roe_constrained(p_tag, pY))
+        cols["e_tag_cm"].append(to_cm(p_tag)[0])
+        cols["m_tag"].append(minv(p_tag))
+        cols["n_roe"].append(n_roe)
+        cols["q_roe"].append(q_roe)
         cols["m2miss"].append(minv2(P_B_CM - pY))
         cols["plep_star"].append(np.linalg.norm(pMu_cm[1:]))
         cols["q2"].append(minv2(P_B_CM - pDst_cm))
@@ -154,7 +183,8 @@ def main():
         cols["mode_id"].append(99)
         cols["event"].append(ievt)
 
-    arrays = {k: np.array(v, dtype=np.int32 if k in ("true_mode", "mode_id", "event")
+    arrays = {k: np.array(v, dtype=np.int32
+                          if k in ("true_mode", "mode_id", "event", "n_roe", "q_roe")
                           else np.float64) for k, v in cols.items()}
     with uproot.recreate(out_path) as f:
         f["events"] = arrays

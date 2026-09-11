@@ -200,6 +200,23 @@ suppression), `p_lep_lab`, `costh_lep_lab`, `p_dst_lab`,
 `true_mode` (1 = D\*τν, 2 = D\*μν, 0 = other B, 3 = continuum),
 `mode_id`, `event`.
 
+### Rest-of-event (ROE) tag
+
+Every detected particle outside the signal candidate — smeared charged
+tracks plus ECL-like photons (σ_E/E = 2 %/√E ⊕ 1 %, E > 50 MeV; K_L,
+neutrons and neutrinos are invisible) — forms the ROE, giving four more
+branches: `e_tag_cm`, `m_tag`, `n_roe`, `q_roe`, and `m2miss_roe`.
+
+Two instructive findings, both physical:
+- **The ROE direction is useless at the Υ(4S)** (`m2miss_roe`): the true B
+  momentum is only 0.34 GeV/c, so undetected particles dominate the tag
+  direction (median error ≈ 58°). This is exactly why real analyses use
+  the cos θ_BY cone or full tag reconstruction (FEI).
+- **The ROE energy is powerful**: for a correct signal candidate the ROE is
+  just the tag B, while a wrongly paired muon drags signal-side particles
+  into the ROE and pushes `e_tag_cm` up. The cut `e_tag_cm < 4.0 GeV`
+  improves S/B in the signal region by **×4** (0.055 → 0.22).
+
 Read them back with:
 
 ```python
@@ -348,14 +365,15 @@ python analysis/fit_m2miss.py --data data/generic_*.root \
 
 Model: μ × S + B with per-bin background uncertainties (MC statistics ⊕ a
 conservative 10 % normalization, to be replaced by proper estimates from
-published analyses). Using the full shape — the μν peak and the sidebands
-constrain the background under the signal — the uncertainty **halves**
-relative to counting:
+published analyses). The fit uses the full shape, and the ROE energy cut
+(`e_tag_cm < 4.0`) suppresses the wrong-muon combinatorial background:
 
 | Method | BF(B0 → D\*τν) | relative stat. @ 1 ab⁻¹ |
 |---|---|---|
-| cut & count | (2.77 ± 2.19) % | ~4.5 % |
-| pyhf template fit | (1.48 ± 1.18) % | **~2.4 %** |
+| cut & count, no ROE | (2.77 ± 2.19) % | ~4.5 % |
+| cut & count, + ROE energy cut | (3.14 ± 1.78) % | ~3.6 % |
+| pyhf template fit, no ROE | (1.48 ± 1.18) % | ~2.4 % |
+| pyhf template fit, + ROE energy cut | (1.48 ± 0.68) % | **~1.4 %** |
 
 (The fit's central value closes exactly by construction — the signal
 template is the truth component of the same pseudo-dataset; taking the

@@ -35,9 +35,10 @@ M_D0, DM = 1.8648, 0.14543
 CUT_M_D0 = 0.020           # |m_d0 - M_D0| window [GeV]
 CUT_DELTA_M = 0.0025       # |delta_m - DM| window [GeV]
 CUT_R2 = 0.30              # Fox-Wolfram R2 (continuum suppression)
+E_TAG_MAX = 4.0            # ROE energy consistency (CM); np.inf disables
 M2MISS_SR = 1.5            # signal region: m2_miss > this [GeV^2]
 
-COLS = ["m2miss", "m_d0", "delta_m", "r2", "true_mode"]
+COLS = ["m2miss", "m_d0", "delta_m", "r2", "e_tag_cm", "true_mode"]
 
 
 def load(paths):
@@ -48,7 +49,7 @@ def load(paths):
 def preselect(t):
     return (np.abs(t["m_d0"] - M_D0) < CUT_M_D0) & \
            (np.abs(t["delta_m"] - DM) < CUT_DELTA_M) & \
-           (t["r2"] < CUT_R2)
+           (t["r2"] < CUT_R2) & (t["e_tag_cm"] < E_TAG_MAX)
 
 
 def main():
