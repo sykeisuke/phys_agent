@@ -25,6 +25,10 @@ class DetectorConfig:
     photon_e_min: float = 0.05             # energy threshold [GeV]
     photon_res_a: float = 0.02             # sigma_E/E = a/sqrt(E) (+) b
     photon_res_b: float = 0.01
+    # muon identification (v1: constant rates, no p/theta dependence yet)
+    mu_id_eff: float = 0.90                # true mu identified as mu
+    pi_fake_mu: float = 0.02               # pi misidentified as mu
+    k_fake_mu: float = 0.01                # K misidentified as mu
 
 
 def theta_lab(p4):
@@ -60,6 +64,25 @@ def detect_track(p4, cfg: DetectorConfig, rng: np.random.Generator):
     if rng.random() > cfg.track_eff:
         return None
     return smear_track(p4, cfg, rng)
+
+
+MU_MASS = 0.1056584
+
+
+def identified_as_muon(pid, cfg: DetectorConfig, rng: np.random.Generator):
+    """Muon-ID decision for a detected track: true muons pass with
+    mu_id_eff, pions/kaons fake with pi_fake_mu / k_fake_mu (v1: constant
+    rates). Electrons and protons never fake."""
+    prob = {13: cfg.mu_id_eff, 211: cfg.pi_fake_mu,
+            321: cfg.k_fake_mu}.get(abs(pid), 0.0)
+    return rng.random() < prob
+
+
+def with_muon_mass(p4):
+    """Re-assign the muon mass hypothesis: keep the momentum, recompute E.
+    This is what makes misidentified hadrons peak in shifted positions."""
+    vec = p4[1:]
+    return np.array([np.sqrt(MU_MASS ** 2 + vec @ vec), *vec])
 
 
 def detect_photon(p4, cfg: DetectorConfig, rng: np.random.Generator):

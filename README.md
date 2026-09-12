@@ -215,6 +215,7 @@ model in `fastsim/smear.py` is applied to every charged track:
 | Momentum resolution | σ_p/p = 0.5% (Gaussian; direction unchanged, E recomputed from the true mass) |
 | Acceptance | 17° < θ_lab < 150° (Belle II CDC-like) |
 | Tracking efficiency | 95% per track, flat in p and θ |
+| Muon identification | ε_μ = 90%; fake rates π→μ = 2%, K→μ = 1% (constant, v1); identified tracks get the **μ mass hypothesis** |
 
 Events in which any signal-chain track is lost are discarded as
 reconstruction failures. The detector model is deliberately minimal and
@@ -422,9 +423,14 @@ published analyses). The fit uses the full shape, and the ROE energy cut
 | Method | BF(B0 → D\*τν) | relative stat. @ 1 ab⁻¹ |
 |---|---|---|
 | cut & count, no ROE | (2.77 ± 2.19) % | ~4.5 % |
-| cut & count, + ROE energy cut | (3.14 ± 1.78) % | ~3.6 % |
-| pyhf template fit, no ROE | (1.48 ± 1.18) % | ~2.4 % |
-| pyhf template fit, + ROE energy cut | (1.48 ± 0.68) % | **~1.4 %** |
+| cut & count, + ROE energy cut | (3.05 ± 2.14) % | ~4.3 % |
+| pyhf template fit, no ROE | (1.48 ± 1.72) % | ~3.5 % |
+| pyhf template fit, + ROE energy cut | (1.48 ± 0.89) % | **~1.9 %** |
+
+(Numbers include the muon-ID efficiency and hadron fake rates; **14 % of
+the signal-region background is a misidentified hadron**, so the ROE cut —
+which rejects wrongly paired lepton candidates of both kinds — matters
+even more once fakes are modeled.)
 
 (The fit's central value closes exactly by construction — the signal
 template is the truth component of the same pseudo-dataset; taking the
