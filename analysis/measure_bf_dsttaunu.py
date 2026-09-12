@@ -38,7 +38,8 @@ CUT_R2 = 0.30              # Fox-Wolfram R2 (continuum suppression)
 E_TAG_MAX = 4.0            # ROE energy consistency (CM); np.inf disables
 M2MISS_SR = 1.5            # signal region: m2_miss > this [GeV^2]
 
-COLS = ["m2miss", "m_d0", "delta_m", "r2", "e_tag_cm", "true_mode"]
+COLS = ["m2miss", "m_d0", "delta_m", "r2", "e_tag_cm", "true_mode",
+        "lep_true_pid"]
 
 
 def load(paths):
@@ -87,7 +88,7 @@ def main():
         sr = preselect(t) & (t["m2miss"] > M2MISS_SR)
         n_obs += w * sr.sum()
         var_obs += w * w * sr.sum()
-        is_bkg = sr & (t["true_mode"] != 1)
+        is_bkg = sr & ~((t["true_mode"] == 1) & (np.abs(t["lep_true_pid"]) == 13))
         n_bkg += w * is_bkg.sum()
         var_bkg += w * w * is_bkg.sum()
     n_sig = n_obs - n_bkg

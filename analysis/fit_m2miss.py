@@ -32,7 +32,8 @@ CUT_M_D0, CUT_DELTA_M, CUT_R2 = 0.020, 0.0025, 0.30
 E_TAG_MAX = 4.0            # ROE energy consistency (CM); np.inf disables
 BINS = np.linspace(-2.0, 10.0, 25)
 
-COLS = ["m2miss", "m_d0", "delta_m", "r2", "e_tag_cm", "true_mode"]
+COLS = ["m2miss", "m_d0", "delta_m", "r2", "e_tag_cm", "true_mode",
+        "lep_true_pid"]
 
 
 def load(paths):
@@ -55,8 +56,8 @@ def hists(samples):
     data = np.zeros(nb)
     for t, w in samples:
         m = preselect(t)
-        is_sig = m & (t["true_mode"] == 1)
-        is_bkg = m & (t["true_mode"] != 1)
+        is_sig = m & (t["true_mode"] == 1) & (np.abs(t["lep_true_pid"]) == 13)
+        is_bkg = m & ~((t["true_mode"] == 1) & (np.abs(t["lep_true_pid"]) == 13))
         sig += w * np.histogram(t["m2miss"][is_sig], bins=BINS)[0]
         h_b = np.histogram(t["m2miss"][is_bkg], bins=BINS)[0]
         bkg += w * h_b

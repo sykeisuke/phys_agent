@@ -34,7 +34,8 @@ import pyhepmc
 import uproot
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from smear import DetectorConfig, detect_photon, detect_track
+from smear import (DetectorConfig, detect_photon, detect_track,
+                   identified_as_muon, with_muon_mass)
 
 B_PIDS = {511, -511}
 DST_PIDS = {413, -413}
@@ -189,9 +190,20 @@ def m2miss_roe_constrained(p_tag, pY):
     return minv2(pB - pY)
 
 
-def find_candidate(event):
-    """First D* + charge-correlated muon pair in the event, or None.
-    Returns (dst, d0_tracks, slow_pi, mu, B_or_None)."""
+def muon_id_map(event, cfg, rng):
+    """One muon-ID decision per stable charged track (true muons pass with
+    mu_id_eff; pions/kaons fake with the configured rates)."""
+    ids = {}
+    for p in event.particles:
+        if not p.end_vertex and abs(p.pid) in CHARGED_STABLE:
+            ids[p.id] = identified_as_muon(p.pid, cfg, rng)
+    return ids
+
+
+def find_candidate(event, muid):
+    """First D* + charge-correlated muon-ID'd track in the event, or None.
+    Returns (dst, d0_tracks, slow_pi, mu, B_or_None). The lepton candidate
+    may be a misidentified hadron (check mu.pid downstream)."""
     for part in event.particles:
         if part.pid not in DST_PIDS or not part.end_vertex:
             continue
@@ -208,10 +220,12 @@ def find_candidate(event):
         if len(d0_tracks) != 2 or len(slow) != 1:
             continue
         dst_ids = {t.id for t in tracks}
-        # charge correlation: D*- (pid<0) pairs with mu+ (pid<0), and c.c.
+        # charge correlation: the lepton charge is opposite to the D* charge
+        q_dst = 1 if part.pid > 0 else -1
         mus = [m for m in event.particles
-               if m.pid in MU_PIDS and not m.end_vertex
-               and m.id not in dst_ids and m.pid * part.pid > 0]
+               if not m.end_vertex and m.id not in dst_ids
+               and muid.get(m.id, False)
+               and charge_of(m.pid) == -q_dst]
         if not mus:
             continue
         mu = max(mus, key=lambda m: np.linalg.norm(to_cm(four_vec(m))[1:]))
@@ -230,7 +244,7 @@ def main():
         "plep_star", "q2", "m_d0", "delta_m", "cos_by", "r2",
         "p_lep_lab", "costh_lep_lab", "p_dst_lab",
         "m2miss_true", "plep_star_true", "q2_true",
-        "true_mode", "mode_id", "event"]}
+        "true_mode", "lep_true_pid", "mode_id", "event"]}
     n_events = n_cand = n_rec = 0
     truth_counts = {"n_b0": 0, "n_dsttaunu": 0, "n_dstmunu": 0, "n_other": 0}
 
@@ -238,7 +252,7 @@ def main():
         for ievt, event in enumerate(f):
             n_events += 1
             count_b_decays(event, truth_counts)
-            cand = find_candidate(event)
+            cand = find_candidate(event, muon_id_map(event, cfg, rng))
             if cand is None:
                 continue
             n_cand += 1
@@ -250,6 +264,7 @@ def main():
             sm_mu = detect_track(pLep_true, cfg, rng)
             if any(s is None for s in sm_d0) or sm_slow is None or sm_mu is None:
                 continue
+            sm_mu = with_muon_mass(sm_mu)  # muon mass hypothesis (also for fakes)
             n_rec += 1
 
             pD0 = np.sum(sm_d0, axis=0)
@@ -293,11 +308,13 @@ def main():
                 cols["plep_star_true"].append(np.nan)
                 cols["q2_true"].append(np.nan)
                 cols["true_mode"].append(3)
+            cols["lep_true_pid"].append(mu.pid)
             cols["mode_id"].append(mode_id)
             cols["event"].append(ievt)
 
     arrays = {k: np.array(v, dtype=np.int32
-                          if k in ("true_mode", "mode_id", "event", "n_roe", "q_roe")
+                          if k in ("true_mode", "lep_true_pid", "mode_id",
+                                   "event", "n_roe", "q_roe")
                           else np.float64) for k, v in cols.items()}
     with uproot.recreate(out_path) as f:
         f["events"] = arrays
