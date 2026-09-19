@@ -12,7 +12,8 @@ Two kinds of notes live here, and the distinction matters:
 
 | File | Author | Content |
 |---|---|---|
-| [dsttaunu_bf_note.pdf](dsttaunu_bf_note.pdf) | hand-written reference | B(B0 -> D*taunu) on the luminosity-matched pseudo-dataset: selection optimization, control regions, counting + toy-validated pyhf fit |
+| [dsttaunu_note_agent.md](dsttaunu_note_agent.md) | **agent-written** | B(B0 -> D*taunu) on the luminosity-matched pseudo-dataset: per-variable selection with stacked figures and scans, cutflow, background composition with control regions, counting + simultaneous e/mu pyhf fit, statistical-only sensitivity projection with a literature-sourced systematic floor |
+| [dsttaunu_bf_note.pdf](dsttaunu_bf_note.pdf) | hand-written reference | same measurement, human-written version kept as the quality benchmark (adds toy validation) |
 | [kstll_note_agent.md](kstll_note_agent.md) | **agent-written** | B0 -> K*0 l+l- sensitivity: K*/Mbc/deltaE selection with scans, per-flavor charmonium vetoes, cutflow, yields at 1/ab; citations retrieved by the agent via web search |
 | [kstll_sensitivity_note.pdf](kstll_sensitivity_note.pdf) | hand-written reference | earlier human-written version of the K*ll study, kept for comparison |
 
