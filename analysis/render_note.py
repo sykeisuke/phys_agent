@@ -84,11 +84,26 @@ def main():
                   "publications. No Belle II internal materials — data, MC, "
                   "internal notes, or the software framework — are used. "
                   "Everything is open-source and runs on a laptop.")
+    # tables: drop code-span formatting inside table rows (unbreakable
+    # \texttt file names overflow their longtable columns) and typeset
+    # all tables small with tight column separation via a header include.
+    fixed = []
+    for line in body.splitlines():
+        if line.lstrip().startswith("|"):
+            line = line.replace("`", "")
+        fixed.append(line)
+    body = "\n".join(fixed)
+    header = out_dir / "_render_header.tex"
+    header.write_text(
+        "\\usepackage{etoolbox}\n"
+        "\\AtBeginEnvironment{longtable}{\\scriptsize}\n"
+        "\\setlength{\\tabcolsep}{4pt}\n")
     body_path = out_dir / (src.stem + "_body.md")
     body_path.write_text(body)
     pdf_out = out_dir / (src.stem + ".pdf")
     cmd = ["pandoc", body_path.name, "-s", "-o", pdf_out.name,
-           "--pdf-engine=xelatex",
+           "--pdf-engine=xelatex", "-H", header.name,
+           "--columns=160",
            "--metadata", f"title={title}",
            "--metadata", "author=K. Yoshihara (University of Hawai\u02bbi "
                          "at M\u0101noa)",
@@ -104,6 +119,7 @@ def main():
         cmd += ["--metadata", f"abstract={abstract}"]
     subprocess.run(cmd, check=True, cwd=out_dir)
     body_path.unlink()
+    header.unlink()
     print(f"published {md_out} (+{len(figures)} figures) and {pdf_out}")
 
 
