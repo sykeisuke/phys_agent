@@ -7,4 +7,4 @@ generation/bin/
 __pycache__/
 .DS_Store
 paper/
-notes/
+/notes/
