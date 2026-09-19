@@ -20,8 +20,15 @@ def main() -> None:
     ap.add_argument("--review", choices=["human", "ai"], default="human",
                     help="approval gate: 'human' (student answers y/N) or "
                          "'ai' (a second LLM reviews the plan)")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="exercise the tool plumbing without any API call "
+                         "(zero cost); use before real runs")
     args = ap.parse_args()
-    run(args.task, model=args.model, review=args.review)
+    if args.dry_run:
+        from .runner import dry_run
+        dry_run(args.task)
+    else:
+        run(args.task, model=args.model, review=args.review)
 
 
 if __name__ == "__main__":

@@ -265,6 +265,20 @@ def read_references() -> str:
 
 
 @beta_tool
+def read_note(name: str) -> str:
+    """Read back a previously saved analysis note from notes/, e.g. to
+    amend it with a new section before saving it again.
+
+    Args:
+        name: file name, e.g. "dsttaunu_note_agent.md".
+    """
+    path = NOTES_DIR / _safe_name(name, ".md")
+    if not path.exists():
+        return f"error: notes/{name} does not exist"
+    return path.read_text()
+
+
+@beta_tool
 def save_note(name: str, content: str) -> str:
     """Save the final analysis note as a Markdown file under notes/
     (kept out of git). Call this once, as the last step of an analysis,
@@ -363,7 +377,9 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
                   selection: str = "m2miss > -999",
                   x_min: float = -2.0, x_max: float = 10.0, n_bins: int = 24,
                   split_by_flavor: bool = True,
-                  bkg_syst: float = 0.10) -> str:
+                  bkg_syst: float = 0.10,
+                  lumi_projection: bool = False,
+                  dataset_lumi_invab: float = 0.000906) -> str:
     """Generic binned maximum-likelihood template fit (pyhf + MINUIT) of
     mu x S + B in one variable. S is the truth-labeled signal component of
     the dataset (signal_selection), B is everything else; per-bin background
@@ -387,6 +403,10 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
         n_bins: number of bins.
         split_by_flavor: simultaneous e/mu channels sharing mu.
         bkg_syst: relative background normalization uncertainty per bin.
+        lumi_projection: also compute the statistical-only Asimov expected
+            precision at 0.1, 0.36, 1, 5 and 50 ab^-1 (background shapes
+            treated as known) and save a projection plot.
+        dataset_lumi_invab: integrated luminosity of the dataset in ab^-1.
     """
     import matplotlib
     matplotlib.use("Agg")
@@ -463,10 +483,43 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
     fig.savefig(out, dpi=150)
     plt.close(fig)
     lines.append(f"post-fit plot: plots/{out.name}")
+
+    if lumi_projection:
+        lumis = np.array([0.1, 0.36, 1.0, 5.0, 50.0])
+        S0 = np.concatenate([parts[c][0] for c in model.config.channels])
+        B0 = np.concatenate([parts[c][1] for c in model.config.channels])
+        rels = []
+        for L in lumis:
+            k = L / dataset_lumi_invab
+            Bk = np.maximum(k * B0, floor)
+            mk = pyhf.simplemodels.uncorrelated_background(
+                signal=(k * S0).tolist(), bkg=Bk.tolist(),
+                bkg_uncertainty=np.maximum(1e-3 * Bk, floor).tolist())
+            asimov = np.asarray(mk.expected_data(
+                pyhf.tensorlib.astensor([1.0] * (1 + len(B0)))))
+            rk = np.asarray(pyhf.infer.mle.fit(asimov, mk,
+                                               return_uncertainties=True))
+            rels.append(float(rk[mk.config.poi_index][1]))
+        lines.append("statistical-only Asimov projection "
+                     "(background shape treated as known):")
+        for L, r in zip(lumis, rels):
+            lines.append(f"  L = {L:g} /ab: expected rel. precision "
+                         f"= {r*100:.1f}%")
+        figp, axp = plt.subplots(figsize=(5.8, 4.0))
+        axp.loglog(lumis, np.array(rels) * 100, "o-", color="#5c7fb8")
+        axp.axvline(dataset_lumi_invab, color="gray", ls=":", lw=1)
+        axp.set_xlabel(r"integrated luminosity [ab$^{-1}$]")
+        axp.set_ylabel(r"expected $\delta\mu/\mu$ [%]")
+        axp.grid(alpha=0.3, which="both")
+        figp.tight_layout()
+        proj = PLOT_DIR / ("projection_" + _safe_name(output_name, ".png"))
+        figp.savefig(proj, dpi=150)
+        plt.close(figp)
+        lines.append(f"projection plot: plots/{proj.name}")
     return "\n".join(lines)
 
 
 ANALYSIS_TOOLS = [read_references, list_decay_modes, generate_mc,
                   generate_continuum, make_ntuple, query_ntuple,
                   plot_variable, plot_stacked, scan_cut, fit_templates,
-                  save_note]
+                  read_note, save_note]
