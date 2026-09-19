@@ -182,6 +182,44 @@ def main():
     pulls = np.array(pulls)
     print(f"toys: {len(pulls)} fits, pull mean = {pulls.mean():+.2f}, "
           f"width = {pulls.std():.2f}")
+
+    # luminosity projection: Asimov expected precision vs integrated lumi
+    L0 = 0.906e-3  # ab^-1 equivalent of the pseudo-dataset
+    lumis = np.array([0.005, 0.02, 0.1, 0.36, 1.0, 5.0, 50.0]) * 1e-3 * 1000
+    # (values in ab^-1: 5/ab steps from 5 fb^-1 to 50 ab^-1)
+    lumis = np.array([0.005, 0.02, 0.1, 0.36, 1.0, 5.0, 50.0])
+    rels = []
+    for L in lumis:
+        k = L / L0
+        bkg_k = np.maximum(k * bkg, floor)
+        # statistical-only projection: background shape treated as known
+        # (no systematic placeholder), so the curve is the pure 1/sqrt(L)
+        # scaling; the systematic floor is drawn separately.
+        unc_k = np.maximum(1e-3 * bkg_k, floor)
+        m_k = pyhf.simplemodels.uncorrelated_background(
+            signal=(k * sig).tolist(), bkg=bkg_k.tolist(),
+            bkg_uncertainty=unc_k.tolist())
+        asimov = np.asarray(m_k.expected_data(
+            pyhf.tensorlib.astensor([1.0] * (1 + len(bkg)))))
+        r = np.asarray(pyhf.infer.mle.fit(asimov, m_k,
+                                          return_uncertainties=True))
+        rels.append(float(r[m_k.config.poi_index][1]))
+    rels = np.array(rels)
+    fig, ax = plt.subplots(figsize=(6.0, 4.2))
+    ax.loglog(lumis, rels * 100, "o-", color="#5c7fb8",
+              label="expected stat. precision (Asimov)")
+    ax.axhline(3.0, color="crimson", ls="--", lw=1.2,
+               label="indicative syst. floor (~3%)")
+    ax.axvline(0.906e-3, color="gray", ls=":", lw=1,
+               label="this pseudo-dataset")
+    ax.set_xlabel(r"integrated luminosity [ab$^{-1}$]")
+    ax.set_ylabel(r"$\delta\mathcal{B}/\mathcal{B}$ [%]")
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.3, which="both")
+    fig.tight_layout()
+    fig.savefig(PLOTS / "note_lumi_projection.png", dpi=150)
+    for L, r in zip(lumis, rels):
+        print(f"  L = {L:g} /ab: expected rel. precision = {r*100:.1f}%")
     fig, ax = plt.subplots(figsize=(5.6, 4.0))
     ax.hist(pulls, bins=np.linspace(-4, 4, 33), color="#5c7fb8",
             histtype="stepfilled")

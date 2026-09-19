@@ -136,6 +136,20 @@ def main():
     print(f"merged single-histogram fit (cross-check): "
           f"mu = {mu_m:.3f} +- {mu_m_err:.3f}")
 
+    # standalone per-flavor fits (the classic per-channel analyses,
+    # to be averaged / compared for lepton-universality-style checks)
+    for name in model.config.channels:
+        sig, bkg, data = per_channel[name]
+        unc = np.maximum(np.sqrt((args.bkg_syst * bkg) ** 2), floor)
+        m1 = pyhf.Model({"channels": [channel_spec(name + "_solo", sig,
+                                                   bkg, unc)]}, poi_name="mu")
+        d1 = np.concatenate([data, m1.config.auxdata])
+        r1 = np.asarray(pyhf.infer.mle.fit(d1, m1, return_uncertainties=True))
+        mu1, e1 = r1[m1.config.poi_index]
+        print(f"  {name}-only fit: mu = {mu1:.3f} +- {e1:.3f} "
+              f"-> BF = ({mu1*args.bf_truth*100:.2f} +- "
+              f"{e1*args.bf_truth*100:.2f})%")
+
     # post-fit plot, one panel per channel
     out = Path(__file__).resolve().parent.parent / "plots"
     out.mkdir(exist_ok=True)

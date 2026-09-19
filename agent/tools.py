@@ -256,6 +256,15 @@ def scan_cut(signal_file: str, background_files: list[str], variable: str,
 
 
 @beta_tool
+def read_references() -> str:
+    """Read the curated summaries of the published reference analyses
+    (variables, selections, control regions, note conventions). Call this
+    at the PLAN stage, before designing any selection, and cite the papers
+    it lists in your plan and note."""
+    return (REPO / "docs" / "references.md").read_text()
+
+
+@beta_tool
 def save_note(name: str, content: str) -> str:
     """Save the final analysis note as a Markdown file under notes/
     (kept out of git). Call this once, as the last step of an analysis,
@@ -274,6 +283,190 @@ def save_note(name: str, content: str) -> str:
     return f"wrote notes/{out.name} ({len(content)} chars)"
 
 
-ANALYSIS_TOOLS = [list_decay_modes, generate_mc, generate_continuum,
-                  make_ntuple, query_ntuple, plot_variable, scan_cut,
+
+
+@beta_tool
+def plot_stacked(root_files: list[str], weights: list[float], variable: str,
+                 output_name: str, selection: str = "m2miss > -999",
+                 x_min: float = 0.0, x_max: float = 10.0, n_bins: int = 40,
+                 cut_lines: list[float] | None = None) -> str:
+    """Publication-style stacked histogram of one variable, split by the
+    true origin of each candidate (true_mode x lepton truth), with optional
+    vertical cut lines. Use this for the note figures: preselection windows,
+    discriminating variables, control regions.
+
+    Args:
+        root_files: ntuple files in data/ forming the dataset.
+        weights: per-file luminosity weights (same length as root_files).
+        variable: branch to plot.
+        output_name: output PNG under plots/.
+        selection: numpy boolean expression applied first.
+        x_min: lower histogram edge.
+        x_max: upper histogram edge.
+        n_bins: number of bins.
+        cut_lines: optional x positions for dashed cut indicators.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    if len(weights) != len(root_files):
+        return "error: weights must match root_files"
+    comps = {0: ("other $B$ decays", "#bdbdbd"),
+             2: (r"$B \to D^{*}\ell\nu$", "#64b5f6"),
+             3: (r"continuum $q\bar q$", "#c9a227"),
+             None: ("fake lepton", "#8d6e63"),
+             1: (r"signal", "crimson")}
+    bins = np.linspace(x_min, x_max, n_bins + 1)
+    vals, ws, labs, cols = [], [], [], []
+    for mode, (lab, col) in comps.items():
+        v, w = [], []
+        for rf, wt in zip(root_files, weights):
+            t = _load(rf)
+            m = _apply_cut(t, selection)
+            if "true_mode" in t:
+                lep_ok = np.isin(np.abs(t.get("lep_true_pid",
+                                              t["true_mode"] * 0 + 13)),
+                                 (11, 13))
+                if mode is None:
+                    m = m & ~lep_ok
+                else:
+                    m = m & (t["true_mode"] == mode) & lep_ok
+            elif mode is not None:
+                continue  # no truth labels: single unlabeled stack
+            v.append(t[variable][m])
+            w.append(np.full(int(m.sum()), wt))
+        if v and sum(len(x) for x in v):
+            vals.append(np.concatenate(v))
+            ws.append(np.concatenate(w))
+            labs.append(lab)
+            cols.append(col)
+    PLOT_DIR.mkdir(exist_ok=True)
+    fig, ax = plt.subplots(figsize=(6.6, 4.4))
+    if vals:
+        ax.hist(vals, bins=bins, weights=ws, stacked=True,
+                color=cols, label=labs)
+    for x in (cut_lines or []):
+        ax.axvline(x, color="k", ls="--", lw=1.2)
+    ax.set_xlabel(variable)
+    ax.set_ylabel("candidates / bin (weighted)")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    out = PLOT_DIR / _safe_name(output_name, ".png")
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    return f"wrote plots/{out.name}"
+
+
+@beta_tool
+def fit_templates(data_files: list[str], weights: list[float], variable: str,
+                  signal_selection: str, output_name: str,
+                  selection: str = "m2miss > -999",
+                  x_min: float = -2.0, x_max: float = 10.0, n_bins: int = 24,
+                  split_by_flavor: bool = True,
+                  bkg_syst: float = 0.10) -> str:
+    """Generic binned maximum-likelihood template fit (pyhf + MINUIT) of
+    mu x S + B in one variable. S is the truth-labeled signal component of
+    the dataset (signal_selection), B is everything else; per-bin background
+    uncertainties are MC statistics (+) bkg_syst x B. With
+    split_by_flavor, the electron and muon channels are fit simultaneously
+    sharing mu (the practice of the published analyses). Returns mu with
+    its uncertainty, per-channel standalone fits, and writes the post-fit
+    plot. Multiply mu by the generator-truth BF to quote a branching
+    fraction.
+
+    Args:
+        data_files: ntuple files in data/ forming the dataset.
+        weights: per-file luminosity weights (same length as data_files).
+        variable: branch to histogram, e.g. "m2miss".
+        signal_selection: truth expression defining S, e.g.
+            "(true_mode==1) & (abs(lep_true_pid)==13)".
+        output_name: post-fit PNG name under plots/.
+        selection: preselection applied to everything.
+        x_min: histogram lower edge.
+        x_max: histogram upper edge.
+        n_bins: number of bins.
+        split_by_flavor: simultaneous e/mu channels sharing mu.
+        bkg_syst: relative background normalization uncertainty per bin.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import pyhf
+    if len(weights) != len(data_files):
+        return "error: weights must match data_files"
+    bins = np.linspace(x_min, x_max, n_bins + 1)
+    floor = 1e-3
+
+    def build(flavor):
+        S = np.zeros(n_bins); B = np.zeros(n_bins)
+        Bv = np.zeros(n_bins); D = np.zeros(n_bins)
+        for rf, wt in zip(data_files, weights):
+            t = _load(rf)
+            m = _apply_cut(t, selection)
+            if flavor is not None:
+                m = m & (t["lep_flavor"] == flavor)
+            is_sig = m & _apply_cut(t, signal_selection)
+            S += wt * np.histogram(t[variable][is_sig], bins=bins)[0]
+            hb = np.histogram(t[variable][m & ~is_sig], bins=bins)[0]
+            B += wt * hb
+            Bv += wt * wt * hb
+            D += wt * np.histogram(t[variable][m], bins=bins)[0]
+        B = np.maximum(B, floor)
+        unc = np.maximum(np.sqrt(Bv + (bkg_syst * B) ** 2), floor)
+        return S, B, unc, D
+
+    def spec(name, S, B, unc):
+        return {"name": name, "samples": [
+            {"name": "signal", "data": S.tolist(), "modifiers":
+             [{"name": "mu", "type": "normfactor", "data": None}]},
+            {"name": "background", "data": B.tolist(), "modifiers":
+             [{"name": f"ub_{name}", "type": "shapesys",
+               "data": unc.tolist()}]}]}
+
+    pyhf.set_backend("numpy", "minuit")
+    flavors = [(11, "e"), (13, "mu")] if split_by_flavor else [(None, "all")]
+    parts = {n: build(f) for f, n in flavors}
+    model = pyhf.Model({"channels": [spec(n, S, B, u)
+                                     for n, (S, B, u, D) in parts.items()]},
+                       poi_name="mu")
+    data = np.concatenate([parts[c][3] for c in model.config.channels]
+                          + [model.config.auxdata])
+    r = np.asarray(pyhf.infer.mle.fit(data, model, return_uncertainties=True))
+    mu, err = r[model.config.poi_index]
+    lines = [f"simultaneous fit: mu = {mu:.3f} +- {err:.3f} "
+             f"(multiply by the generator-truth BF for the measured BF)"]
+    for n, (S, B, u, D) in parts.items():
+        m1 = pyhf.Model({"channels": [spec(n + "_solo", S, B, u)]},
+                        poi_name="mu")
+        r1 = np.asarray(pyhf.infer.mle.fit(
+            np.concatenate([D, m1.config.auxdata]), m1,
+            return_uncertainties=True))
+        lines.append(f"  {n}-only: mu = {r1[m1.config.poi_index][0]:.3f} "
+                     f"+- {r1[m1.config.poi_index][1]:.3f}")
+    centers = 0.5 * (bins[:-1] + bins[1:])
+    width = np.diff(bins)
+    fig, axes = plt.subplots(1, len(parts), figsize=(5.6 * len(parts), 4.2),
+                             squeeze=False)
+    for ax, (n, (S, B, u, D)) in zip(axes[0], parts.items()):
+        ax.bar(centers, B, width=width, color="#bdbdbd", label="background")
+        ax.bar(centers, mu * S, width=width, bottom=B, color="crimson",
+               label=rf"$\mu\times$signal")
+        ax.errorbar(centers, D, yerr=np.sqrt(np.maximum(D, 1)), fmt="ko",
+                    ms=3, lw=1, label="data")
+        ax.set_xlabel(variable)
+        ax.set_title(n, fontsize=10)
+        ax.set_yscale("log")
+    axes[0][0].legend(fontsize=8)
+    fig.tight_layout()
+    PLOT_DIR.mkdir(exist_ok=True)
+    out = PLOT_DIR / _safe_name(output_name, ".png")
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    lines.append(f"post-fit plot: plots/{out.name}")
+    return "\n".join(lines)
+
+
+ANALYSIS_TOOLS = [read_references, list_decay_modes, generate_mc,
+                  generate_continuum, make_ntuple, query_ntuple,
+                  plot_variable, plot_stacked, scan_cut, fit_templates,
                   save_note]
