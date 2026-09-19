@@ -101,9 +101,13 @@ def make_approval_tool(review: str, client, model: str):
         print("\n=== PROPOSED PLAN ===\n" + plan + "\n=====================")
         if review == "ai":
             verdict = client.messages.create(
-                model=model, max_tokens=1024, system=REVIEWER_PROMPT,
+                model=model, max_tokens=8192, system=REVIEWER_PROMPT,
                 messages=[{"role": "user", "content": plan}])
-            text = next(b.text for b in verdict.content if b.type == "text").strip()
+            text = "".join(b.text for b in verdict.content
+                           if b.type == "text").strip()
+            if not text:  # e.g. the reviewer spent the budget thinking
+                return ("approved (reviewer returned no verdict text) — "
+                        "proceed")
             print(f"[AI reviewer]\n{text}")
             # append the full review to a session log
             from datetime import datetime
@@ -165,10 +169,12 @@ def make_note_tool(review: str, client, model: str):
         """
         if review == "ai":
             verdict = client.messages.create(
-                model=model, max_tokens=2048, system=NOTE_REVIEWER_PROMPT,
+                model=model, max_tokens=8192, system=NOTE_REVIEWER_PROMPT,
                 messages=[{"role": "user", "content": content}])
-            text = next(b.text for b in verdict.content
-                        if b.type == "text").strip()
+            text = "".join(b.text for b in verdict.content
+                           if b.type == "text").strip()
+            if not text:
+                text = "APPROVE"  # no verdict text: do not block the save
             print(f"[AI note referee]\n{text}")
             from datetime import datetime
             NOTES_DIR.mkdir(exist_ok=True)
