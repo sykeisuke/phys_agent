@@ -106,6 +106,27 @@ def main():
     fig.savefig(out / "kstll_veto_demo.png", dpi=150)
     print("wrote plots/kstll_veto_demo.png")
 
+    # selection variables: Mbc and deltaE for signal, by lepton flavor
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.0))
+    for fl, name, color in [(11, "ee", "#3a6ea5"), (13, r"$\mu\mu$", "crimson")]:
+        m = sig["lep_flavor"] == fl
+        axes[0].hist(sig["mbc"][m], bins=np.linspace(5.2, 5.3, 50),
+                     histtype="step", lw=2, color=color, label=name)
+        axes[1].hist(sig["delta_e"][m], bins=np.linspace(-0.6, 0.3, 60),
+                     histtype="step", lw=2, color=color, label=name)
+    axes[0].axvline(M_B - MBC_WIN, color="k", ls="--", lw=1)
+    axes[0].axvline(M_B + MBC_WIN, color="k", ls="--", lw=1)
+    axes[1].axvline(DE_LO, color="k", ls="--", lw=1)
+    axes[1].axvline(DE_HI, color="k", ls="--", lw=1)
+    axes[0].set_xlabel(r"$M_{\rm bc}$ [GeV]")
+    axes[1].set_xlabel(r"$\Delta E$ [GeV]")
+    for ax in axes:
+        ax.set_ylabel("candidates")
+        ax.legend(fontsize=9)
+    fig.tight_layout()
+    fig.savefig(out / "kstll_sel.png", dpi=150)
+    print("wrote plots/kstll_sel.png")
+
 
 if __name__ == "__main__":
     main()
