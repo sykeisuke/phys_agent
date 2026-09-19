@@ -519,7 +519,37 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
     return "\n".join(lines)
 
 
+@beta_tool
+def save_note_latex(name: str, content: str) -> str:
+    """Save the final TYPESET version of an approved note as LaTeX and
+    compile it to PDF (xelatex, two passes). Call this only AFTER the
+    Markdown note has been accepted by save_note. The content must be a
+    complete, compilable .tex document (documentclass article; use
+    booktabs tables, numbered figure floats with descriptive captions,
+    \tableofcontents, the abstract, and the title block with the
+    public-materials disclaimer; figures are available under ../plots/).
+    On compile errors the error lines are returned so you can fix the
+    LaTeX and call again.
+
+    Args:
+        name: file name, e.g. "dsttaunu_note.tex".
+        content: the complete LaTeX source.
+    """
+    NOTES_DIR.mkdir(exist_ok=True)
+    out = NOTES_DIR / _safe_name(name, ".tex")
+    out.write_text(content)
+    for _ in range(2):
+        proc = subprocess.run(
+            ["xelatex", "-interaction=nonstopmode", out.name],
+            capture_output=True, text=True, timeout=300, cwd=NOTES_DIR)
+    if proc.returncode != 0:
+        errs = [l for l in proc.stdout.splitlines() if l.startswith("!")]
+        return ("compile FAILED — fix the LaTeX and call again:\n"
+                + "\n".join(errs[:10]))
+    return f"wrote notes/{out.name} and compiled notes/{out.stem}.pdf"
+
+
 ANALYSIS_TOOLS = [read_references, list_decay_modes, generate_mc,
                   generate_continuum, make_ntuple, query_ntuple,
                   plot_variable, plot_stacked, scan_cut, fit_templates,
-                  read_note, save_note]
+                  read_note, save_note, save_note_latex]

@@ -45,6 +45,13 @@ You work together with a student. Follow this loop strictly:
    what is NOT modeled and how a real analysis would handle it; cite the
    published analyses you followed. Every number in the note must come
    from a tool result of this session.
+5. TYPESET: once save_note accepts the Markdown note, produce the final
+   typeset version with save_note_latex: a complete LaTeX document with
+   the title block (author lines, version/date, the public-materials
+   disclaimer), the abstract, a table of contents, booktabs tables, and
+   numbered figure floats with descriptive captions. The LaTeX content
+   must match the accepted Markdown note exactly; if compilation fails,
+   fix the LaTeX and call save_note_latex again.
 
 Analysis policy:
 - Before designing a selection, check whether a published analysis of the

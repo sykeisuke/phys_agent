@@ -17,7 +17,15 @@ Two kinds of notes live here, and the distinction matters:
 | [kstll_note_agent.pdf](kstll_note_agent.pdf) ([md](kstll_note_agent.md)) | **agent-written** | B0 -> K*0 l+l- sensitivity: K*/Mbc/deltaE selection with scans, per-flavor charmonium vetoes, cutflow, yields at 1/ab; citations retrieved by the agent via web search |
 | [kstll_sensitivity_note.pdf](kstll_sensitivity_note.pdf) | hand-written reference | earlier human-written version of the K*ll study, kept for comparison |
 
-All figures referenced by the agent notes are bundled under `figures/`,
-and the PDFs are rendered from the Markdown with `analysis/render_note.py`
-(a mechanical publication step; the text is the agent's, unedited).
+All figures referenced by the agent notes are bundled under `figures/`.
+The agent-note PDFs are typeset LaTeX versions of the agent's accepted
+Markdown notes (the `.tex` sources live next to the PDFs): the text and
+every number are the agent's, unedited; the typography — math notation,
+booktabs tables, figure floats and captions — was added by hand in this
+round. The workflow now includes a TYPESET stage (`save_note_latex`) in
+which the agent produces this LaTeX version itself after its Markdown
+note passes the AI referee; that stage is implemented but has not yet
+been exercised in a paid run, so the current PDFs were typeset by hand
+from the agent's Markdown. `analysis/render_note.py` remains as the
+quick mechanical Markdown-to-PDF fallback.
 All numbers are reproducible from the fixed seeds listed inside each note.
