@@ -28,10 +28,3 @@ stage is implemented but has not yet been exercised in a paid run, so
 the current PDFs were typeset by hand from the agent's Markdown.
 `analysis/render_note.py` remains as the quick mechanical
 Markdown-to-PDF fallback.
-
-**Hand-written reference notes** live in [`reference/`](reference/):
-earlier human-authored versions of the same two studies
-([dsttaunu_bf_note.pdf](reference/dsttaunu_bf_note.pdf),
-[kstll_sensitivity_note.pdf](reference/kstll_sensitivity_note.pdf)),
-kept only as the quality benchmark the agent-written notes are measured
-against. They are not the framework's output.
