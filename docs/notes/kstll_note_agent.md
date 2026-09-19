@@ -1,5 +1,21 @@
-
 # Sensitivity study: B0 -> K*0(K+pi-) l+l- with a J/psi K*0 peaking background
+
+## Abstract
+
+Using existing fast-simulation ntuples (10000 generated B0 -> K*0 l+l-
+signal events and 5000 generated B0 -> J/psi(->l+l-) K*0 background
+events, split evenly between e+e- and mu+mu-), we apply the Belle/Belle
+II B -> K*(892)l+l- selection: a K pi mass window (0.896 +- 0.075 GeV),
+Mbc > 5.27 GeV, an asymmetric per-flavor DeltaE window, and an
+asymmetric charmonium veto in m_ll. Before the veto the J/psi K*0
+control region is essentially pure background (20645 e+e- and 19132
+mu+mu- events at 1 ab^-1, purity 99.89%); after the veto the leakage
+drops to 43.2 events (e+e-) and consistent with zero, 68%-CL upper
+limit ~25 events (mu+mu-), a signal-efficiency step of 92.5% versus a
+background rejection of 99.8-100%. At 1 ab^-1 the projected yields are
+285.7 e+e- and 251.8 mu+mu- signal candidates, giving ~6.3% relative
+statistical precision per flavor and 4.5% combined. Continuum and
+generic-BBbar combinatorial background are not modeled in this study.
 
 ## 1. Introduction
 
@@ -110,6 +126,8 @@ retaining ~84% of both samples while removing the far tails where a real
 combinatorial background (not modeled here) would dominate.
 Figure: `plots/01_mvisible_presel.png` (cut lines at the window edges).
 
+![01_mvisible_presel.png](figures/01_mvisible_presel.png)
+
 ### 3.2 Beam-energy-constrained mass (Mbc)
 
 *Targets:* combinatorial/continuum background populating low Mbc (not
@@ -131,6 +149,8 @@ there would remove signal, not background. **Mbc > 5.27 GeV** is chosen,
 following Wei et al., retaining 96% of the K*-window sample.
 Figure: `plots/02_mbc_afterkst.png` (cut line at 5.27 GeV).
 
+![02_mbc_afterkst.png](figures/02_mbc_afterkst.png)
+
 ### 3.3 Energy difference (DeltaE), per lepton flavor
 
 *Targets:* partially reconstructed or extra-energy background; for
@@ -151,6 +171,10 @@ Chosen: **-0.10 < DeltaE < 0.05 GeV**, a narrower low side than for
 electrons, reproducing the qualitative asymmetry reported by Wei et al.
 
 Figures: `plots/03_deltae_ee.png`, `plots/03_deltae_mumu.png` (cut lines
+
+![03_deltae_ee.png](figures/03_deltae_ee.png)
+
+![03_deltae_mumu.png](figures/03_deltae_mumu.png)
 at the chosen edges).
 
 ### 3.4 Charmonium (J/psi) veto in m_ll, asymmetric per flavor
@@ -179,6 +203,10 @@ adopted as the final veto, confirmed rather than re-derived by the scan:
 | mu+mu- | 2.946 - 3.176 GeV |
 
 Figures: `plots/04_mll_ee_veto.png`, `plots/04_mll_mumu_veto.png`.
+
+![04_mll_ee_veto.png](figures/04_mll_ee_veto.png)
+
+![04_mll_mumu_veto.png](figures/04_mll_mumu_veto.png)
 
 ## 4. Full cutflow (per flavor, per sample)
 
