@@ -12,7 +12,7 @@ R(D\*) = B(B → D\*τν)/B(B → D\*ℓν), a long-standing hint of
 lepton-flavor-universality violation — but here it simply serves as a
 worked example with interesting kinematics.)
 
-![Feynman diagram of B → D* tau nu](docs/figures/feynman_b2dsttaunu.svg)
+![Feynman diagram of B → D* tau nu](figures/feynman_b2dsttaunu.svg)
 
 Because the τ decays promptly and produces multiple neutrinos, **the τ mode
 has large missing energy**. The discriminating variables are:
@@ -26,12 +26,12 @@ has large missing energy**. The discriminating variables are:
 ### Truth level
 
 ```bash
-python analysis/plot_m2miss.py data/signal_taunu.hepmc data/norm_munu.hepmc
+python analysis/plot_m2miss.py data/signal_taunu.hepmc data/norm_lnu.hepmc
 ```
 
 | | |
 |---|---|
-| ![m2miss](docs/figures/m2miss.png) | ![p*_lep](docs/figures/plep_star.png) |
+| ![m2miss](figures/m2miss.png) | ![p*_lep](figures/plep_star.png) |
 
 The μν mode peaks sharply at m²_miss = 0, while the τν mode is broad and
 positive because of the three neutrinos. In p\*_ℓ the secondary muon from
@@ -40,7 +40,7 @@ the τ is clearly softer.
 ### After fast simulation
 
 ```bash
-python fastsim/apply_fastsim.py data/signal_taunu.hepmc data/norm_munu.hepmc 42
+python fastsim/apply_fastsim.py data/signal_taunu.hepmc data/norm_lnu.hepmc 42
 ```
 
 | Mode | Reconstruction efficiency | Breakdown (approx.) |
@@ -50,7 +50,7 @@ python fastsim/apply_fastsim.py data/signal_taunu.hepmc data/norm_munu.hepmc 42
 
 | | |
 |---|---|
-| ![m2miss fastsim vs truth](docs/figures/m2miss_fastsim_vs_truth.png) | ![m2miss peak zoom](docs/figures/m2miss_peak_zoom.png) |
+| ![m2miss fastsim vs truth](figures/m2miss_fastsim_vs_truth.png) | ![m2miss peak zoom](figures/m2miss_peak_zoom.png) |
 
 The μν-mode m²_miss peak, delta-like at truth level, broadens to
 σ ≈ 0.07 GeV² after smearing — still orders of magnitude narrower than the
@@ -74,7 +74,7 @@ python fastsim/make_ntuple.py data/bkg_dststlnu.hepmc   data/bkg_dststlnu.root  
 
 | | |
 |---|---|
-| ![m2miss modes](docs/figures/m2miss_modes.png) | ![p*_lep modes](docs/figures/plep_star_modes.png) |
+| ![m2miss modes](figures/m2miss_modes.png) | ![p*_lep modes](figures/plep_star_modes.png) |
 
 The D\*\*μν background peaks at m²_miss ≈ 0.3–1 GeV² (one missed π0),
 between the normalization peak and the broad signal distribution.
@@ -100,7 +100,7 @@ python analysis/measure_bf_dsttaunu.py --signal data/signal_taunu.root \
 | **B(B0 → D\*τν)** | **(2.77 ± 2.19 (stat)) %** |
 | Generator truth | 1.48 % → closure at +0.6σ |
 
-![BF measurement m2miss](docs/figures/bf_m2miss_data.png)
+![BF measurement m2miss](figures/bf_m2miss_data.png)
 
 The pseudo-dataset corresponds to only ~0.9 fb⁻¹; scaling the statistical
 error by 1/√L gives a **~4.5 % relative measurement at 1 ab⁻¹ (Belle II
@@ -136,6 +136,19 @@ e/μ split is reported separately by the scripts):
 (Numbers include the lepton-ID efficiencies and hadron fake rates — ~14 %
 of the signal-region background is a misidentified hadron; the ROE energy
 cut rejects wrongly paired lepton candidates of both kinds.)
+
+The fit is performed with simultaneous electron and muon channels sharing
+the signal strength (the practice of the published R(D*) analyses);
+standalone per-flavor fits give BF = (1.48 ± 0.72)% (e) and
+(1.48 ± 0.77)% (μ), consistent as expected from lepton universality.
+
+![post-fit per channel](figures/fit_m2miss.png)
+
+The expected statistical precision scales as 1/√L (Asimov projection;
+the dashed line marks the ~3% indicative systematic floor from published
+analyses of comparable modes):
+
+![luminosity projection](figures/note_lumi_projection.png)
 
 (The fit's central value closes exactly by construction — the signal
 template is the truth component of the same pseudo-dataset; taking the
@@ -176,7 +189,7 @@ analyses:
 | ee | 43.1 % | 317 | 25 700 | 368 | 8.3 % |
 | μμ | 38.2 % | 286 | 23 100 | 518 | 9.9 % |
 
-![Kst ll veto demo](docs/figures/kstll_veto_demo.png)
+![Kst ll veto demo](figures/kstll_veto_demo.png)
 
 Not modeled: combinatorial background (Mbc/ΔE sidebands handle it in a real
 analysis) and misID peaking backgrounds beyond the lepton fake rates (the

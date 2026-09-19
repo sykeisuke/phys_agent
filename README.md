@@ -100,32 +100,39 @@ usage with the default model, less with Sonnet.
 
 ```
 phys_agent/
-├── README.md               # this file (overall instructions)
+├── README.md               # this file: concept and usage
 ├── CLAUDE.md               # AI-agent conventions and physics conventions
-├── agent/                  # the AI-agent skeleton (see section 1 / agent/README.md)
-│   ├── runner.py           # Plan -> approval -> Execute -> Report loop
+├── agent/                  # the AI agent (see section 1 / agent/README.md)
+│   ├── runner.py           # Plan -> review -> Execute -> Report -> Note loop
 │   ├── tools.py            # typed pipeline tools exposed to the LLM
 │   └── __main__.py         # CLI: python -m agent "<task>"
-├── docs/
-│   ├── basf2.md            # basf2 variable mapping and migration path
-│   └── figures/            # Feynman diagrams and report figures
 ├── generation/             # MC generation
-│   ├── dec/                # EvtGen user decay files, one per mode (section 4)
+│   ├── dec/                # EvtGen decay files, one per mode (section 4)
 │   ├── src/generate.cc     # EvtGen driver (HepMC3 output)
-│   ├── generate_continuum.py  # Pythia8 continuum -> ntuple, one pass
-│   ├── basf2/              # basf2 steering-file templates (untested here)
+│   ├── generate_continuum.py   # Pythia8 continuum -> ntuple, one pass
+│   ├── basf2/              # basf2 steering templates (untested here)
 │   └── build.sh            # build script
-├── scripts/
-│   └── env.sh              # conda environment activation
-├── fastsim/                # simple detector response (section 5)
-│   ├── smear.py            # detector model (resolution, acceptance, efficiency)
-│   ├── apply_fastsim.py    # smearing + truth-vs-smeared comparison plots
-│   └── make_ntuple.py      # fast sim -> flat ROOT ntuple (uproot)
+├── fastsim/                # parametric detector response (section 5)
+│   ├── smear.py            # tracks, photons, lepton ID + fake rates
+│   ├── make_ntuple.py      # D*-chain candidates -> flat ROOT ntuple
+│   ├── make_ntuple_exclusive.py # any forced exclusive mode (lnu / ll)
+│   └── apply_fastsim.py    # truth-vs-smeared comparison plots
 ├── analysis/
-│   ├── plot_m2miss.py      # truth-level plots for the worked example
-│   └── measure_bf_dsttaunu.py  # counting BF measurement on the pseudo-dataset
-├── data/                   # generated MC and ntuples (not tracked by git)
-└── plots/                  # output plots
+│   ├── plot_m2miss.py      # truth-level plots
+│   ├── measure_bf_dsttaunu.py  # counting BF measurement
+│   ├── fit_m2miss.py       # pyhf template fit (simultaneous e/mu channels)
+│   ├── note_plots.py       # figures + CR purities + toy study for the note
+│   ├── sensitivity_ds.py   # charged-B modes: yields at 1/ab
+│   └── sensitivity_kstll.py    # K*ll selection, vetoes, yields
+├── docs/
+│   ├── demonstrations.md   # the two end-to-end demonstrations
+│   ├── notes/              # published analysis notes (PDF)
+│   ├── basf2.md            # basf2 variable mapping and migration path
+│   └── figures/            # report figures
+├── scripts/env.sh          # conda environment activation
+├── notes/                  # agent-written notes + review log (not tracked)
+├── data/                   # generated MC and ntuples (not tracked)
+└── plots/                  # output plots (not tracked)
 ```
 
 ---
