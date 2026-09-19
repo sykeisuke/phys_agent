@@ -27,14 +27,16 @@ import pyhepmc
 import uproot
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from smear import DetectorConfig, detect_photon, detect_track
+from smear import (DetectorConfig, detect_photon, detect_track,
+                   reco_lepton_flavor, with_lepton_mass)
 from make_ntuple import (CHARGED_STABLE, E_B_CM, P_B_CM, boost_to_rest,
                          count_b_decays, four_vec, fox_wolfram_r2, minv,
                          minv2, roe_tag_momentum, to_cm)
 
-MU_PIDS = {13, -13}
+LEP_PIDS = {11, 13}
+CHARMONIUM = {443, 100443}  # J/psi, psi(2S): their lepton daughters count
 B_ALL = {511, -511, 521, -521}
-NEUTRALS_SKIP = {12, 14, 16, 22}
+SKIP = {11, 12, 13, 14, 16, 22}
 
 
 def visible_descendants(part):
@@ -50,16 +52,23 @@ def visible_descendants(part):
 
 
 def find_signal_b(event):
-    """The forced B -> hadrons + mu nu (1 muon) or hadrons + mu mu (2 muons).
-    Returns (hadron daughters, muons) or None."""
+    """The forced B -> hadrons + l nu (1 lepton) or hadrons + l+ l-
+    (2 leptons, directly or via J/psi / psi(2S)).
+    Returns (hadron daughters, leptons) or None."""
     for part in event.particles:
         if part.pid not in B_ALL or not part.end_vertex:
             continue
         dau = part.end_vertex.particles_out
-        mus = [d for d in dau if d.pid in MU_PIDS]
-        hads = [d for d in dau if abs(d.pid) not in NEUTRALS_SKIP | {13}]
-        if len(mus) in (1, 2) and len(hads) >= 1 and len(hads) + len(mus) >= 3:
-            return hads, mus
+        leps = [d for d in dau if abs(d.pid) in LEP_PIDS]
+        hads = []
+        for d in dau:
+            if abs(d.pid) in CHARMONIUM and d.end_vertex:
+                leps.extend(x for x in d.end_vertex.particles_out
+                            if abs(x.pid) in LEP_PIDS)
+            elif abs(d.pid) not in SKIP:
+                hads.append(d)
+        if len(leps) in (1, 2) and len(hads) >= 1 and len(hads) + len(leps) >= 3:
+            return hads, leps
     return None
 
 
@@ -72,7 +81,7 @@ def main():
     cols = {k: [] for k in [
         "m2miss", "plep_star", "q2", "m_visible", "mbc", "delta_e", "m_ll",
         "r2", "e_tag_cm", "m_tag", "n_roe", "q_roe",
-        "n_tracks", "n_photons", "n_mu", "mode_id", "event"]}
+        "n_tracks", "n_photons", "n_mu", "lep_flavor", "mode_id", "event"]}
     n_events = n_cand = n_rec = 0
 
     with pyhepmc.open(in_path) as f:
@@ -103,8 +112,11 @@ def main():
                     break
                 smeared.append(s)
             sm_mus = [detect_track(four_vec(m), cfg, rng) for m in mus]
-            if not ok or any(m is None for m in sm_mus) or not smeared:
-                continue
+            flavors = [reco_lepton_flavor(m.pid, cfg, rng) for m in mus]
+            if not ok or any(m is None for m in sm_mus) or not smeared \
+                    or any(f == 0 for f in flavors):
+                continue  # lepton lost or failed lepton ID
+            sm_mus = [with_lepton_mass(m, f) for m, f in zip(sm_mus, flavors)]
             n_rec += 1
 
             pHad = np.sum(smeared, axis=0)
@@ -132,12 +144,13 @@ def main():
             cols["n_tracks"].append(n_trk)
             cols["n_photons"].append(n_pho)
             cols["n_mu"].append(len(sm_mus))
+            cols["lep_flavor"].append(flavors[0])
             cols["mode_id"].append(mode_id)
             cols["event"].append(ievt)
 
     arrays = {k: np.array(v, dtype=np.int32
                           if k in ("n_roe", "q_roe", "n_tracks", "n_photons",
-                                   "n_mu", "mode_id", "event")
+                                   "n_mu", "lep_flavor", "mode_id", "event")
                           else np.float64) for k, v in cols.items()}
     with uproot.recreate(out_path) as f:
         f["events"] = arrays

@@ -1,4 +1,4 @@
-# Normalization: B0 -> D*- mu+ nu_mu with the same D* chain as the signal.
+# Normalization: B0 -> D*- l+ nu (l = e, mu; 50/50) with the same D* chain as the signal.
 # Form factor: ISGW2 (v1; upgrade to BGL/CLN later).
 
 Alias      B0sig        B0
@@ -18,7 +18,8 @@ Decay Upsilon(4S)
 Enddecay
 
 Decay B0sig
-1.000  D*-sig mu+ nu_mu              ISGW2;
+0.500  D*-sig e+  nu_e               ISGW2;
+0.500  D*-sig mu+ nu_mu              ISGW2;
 Enddecay
 CDecay anti-B0sig
 

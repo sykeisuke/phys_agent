@@ -1,4 +1,4 @@
-# Background: B0 -> D** mu+ nu (semileptonic feed-down), narrow D** states only.
+# Background: B0 -> D** l+ nu (l = e, mu; semileptonic feed-down), narrow D** states only.
 # D** -> D*- pi0 is forced so every event contains a reconstructable D*-
 # with the same K pi pi chain as the signal; the extra pi0 is missed,
 # which shifts m2_miss to positive values (the dominant background shape).
@@ -32,8 +32,10 @@ Decay Upsilon(4S)
 Enddecay
 
 Decay B0sig
-0.560  D_1-sig  mu+ nu_mu            PHOTOS ISGW2;
-0.440  D_2*-sig mu+ nu_mu            PHOTOS ISGW2;
+0.280  D_1-sig  e+  nu_e             PHOTOS ISGW2;
+0.280  D_1-sig  mu+ nu_mu            PHOTOS ISGW2;
+0.220  D_2*-sig e+  nu_e             PHOTOS ISGW2;
+0.220  D_2*-sig mu+ nu_mu            PHOTOS ISGW2;
 Enddecay
 CDecay anti-B0sig
 

@@ -39,7 +39,8 @@ Enddecay
 CDecay D0sig
 
 Decay tau+sig
-1.000  mu+ nu_mu anti-nu_tau         TAULNUNU;
+0.154  e+  nu_e  anti-nu_tau        TAULNUNU;
+0.170  mu+ nu_mu anti-nu_tau        TAULNUNU;
 Enddecay
 CDecay tau-sig
 

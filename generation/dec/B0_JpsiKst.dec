@@ -1,0 +1,35 @@
+# Charmonium peaking background for B0 -> K*0 l+ l-:
+# B0 -> J/psi(-> l+ l-) K*0, same visible final state as the signal.
+# Vetoed in real analyses with windows in m(l+l-).
+
+Alias      B0sig        B0
+Alias      anti-B0sig   anti-B0
+ChargeConj B0sig        anti-B0sig
+
+Alias      K*0sig       K*0
+Alias      anti-K*0sig  anti-K*0
+ChargeConj K*0sig       anti-K*0sig
+
+Alias      J/psisig     J/psi
+ChargeConj J/psisig     J/psisig
+
+Decay Upsilon(4S)
+1.000  B0sig anti-B0sig B0 anti-B0   VSS_BMIX dm;
+Enddecay
+
+Decay B0sig
+1.000  J/psisig K*0sig               SVV_HELAMP 0.6417 3.29 0.7556 0.0 0.1312 0.13;
+Enddecay
+CDecay anti-B0sig
+
+Decay J/psisig
+0.500  e+  e-                        PHOTOS VLL;
+0.500  mu+ mu-                       PHOTOS VLL;
+Enddecay
+
+Decay K*0sig
+1.000  K+ pi-                        VSS;
+Enddecay
+CDecay anti-K*0sig
+
+End
