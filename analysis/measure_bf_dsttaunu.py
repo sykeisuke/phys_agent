@@ -27,8 +27,8 @@ import uproot
 # sub-mode branching fractions as in the EvtGen decay tables
 B_DST_D0PI = 0.6770        # D*+ -> D0 pi+
 B_D0_KPI = 0.0389          # D0 -> K- pi+
-B_TAU_MUNUNU = 0.1736      # tau -> mu nu nu (incl. radiative)
-B_SUB = B_DST_D0PI * B_D0_KPI * B_TAU_MUNUNU
+B_TAU_LNUNU = 0.331        # tau -> e/mu nu nu (e + mu, incl. radiative)
+B_SUB = B_DST_D0PI * B_D0_KPI * B_TAU_LNUNU
 
 # selection (beam-constrained variables)
 M_D0, DM = 1.8648, 0.14543
@@ -39,7 +39,7 @@ E_TAG_MAX = 4.0            # ROE energy consistency (CM); np.inf disables
 M2MISS_SR = 1.5            # signal region: m2_miss > this [GeV^2]
 
 COLS = ["m2miss", "m_d0", "delta_m", "r2", "e_tag_cm", "true_mode",
-        "lep_true_pid"]
+        "lep_true_pid", "lep_flavor"]
 
 
 def load(paths):
@@ -88,12 +88,20 @@ def main():
         sr = preselect(t) & (t["m2miss"] > M2MISS_SR)
         n_obs += w * sr.sum()
         var_obs += w * w * sr.sum()
-        is_bkg = sr & ~((t["true_mode"] == 1) & (np.abs(t["lep_true_pid"]) == 13))
+        is_bkg = sr & ~((t["true_mode"] == 1) & np.isin(np.abs(t["lep_true_pid"]), (11, 13)))
         n_bkg += w * is_bkg.sum()
         var_bkg += w * w * is_bkg.sum()
     n_sig = n_obs - n_bkg
     print(f"data: {n_obs:.1f} candidates in SR, {n_bkg:.1f} background "
           f"(MC truth, continuum weighted) -> N_sig = {n_sig:.1f}")
+    for fl, name in [(11, "e"), (13, "mu")]:
+        n_fl = sum(w * (preselect(t) & (t["m2miss"] > M2MISS_SR)
+                        & (t["lep_flavor"] == fl)).sum() for t, w in samples)
+        s_fl = sum(w * (preselect(t) & (t["m2miss"] > M2MISS_SR)
+                        & (t["lep_flavor"] == fl) & (t["true_mode"] == 1)
+                        & (np.abs(t["lep_true_pid"]) == fl)).sum()
+                   for t, w in samples)
+        print(f"  {name} channel: {n_fl:.1f} candidates, {s_fl:.1f} true signal")
 
     # --- branching fraction ---
     denom = args.n_b0 * eps * B_SUB
@@ -112,7 +120,7 @@ def main():
     out.mkdir(exist_ok=True)
     bins = np.linspace(-2, 10, 49)
     stacks, weights, labels, colors = [], [], [], []
-    spec = [(0, "other B decays", "#bdbdbd"), (2, r"$B \to D^{*}\mu\nu$", "#64b5f6"),
+    spec = [(0, "other B decays", "#bdbdbd"), (2, r"$B \to D^{*}\ell\nu$", "#64b5f6"),
             (3, "continuum $q\\bar{q}$", "#c9a227"), (1, r"$B \to D^{*}\tau\nu$ (signal)", "crimson")]
     for mode, label, color in spec:
         vals, ws = [], []

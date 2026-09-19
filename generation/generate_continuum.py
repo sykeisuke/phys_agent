@@ -24,7 +24,7 @@ import uproot
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "fastsim"))
 from smear import (DetectorConfig, detect_photon, detect_track,
-                   identified_as_muon, with_muon_mass)
+                   reco_lepton_flavor, with_lepton_mass)
 from make_ntuple import (CHARGED_STABLE, INVISIBLE, NEUTRINOS, E_B_CM, M_B,
                          P_B_CM, P_B_MAG, charge_of, m2miss_roe_constrained,
                          minv, minv2, to_cm)
@@ -44,16 +44,17 @@ def stable_charged(ev, i):
     return out
 
 
-def muon_id_map(ev, cfg, rng):
-    """One muon-ID decision per stable charged track (incl. hadron fakes)."""
+def lepton_id_map(ev, cfg, rng):
+    """One lepton-ID decision per stable charged track (incl. hadron fakes):
+    index -> reconstructed flavor (13, 11, or 0)."""
     ids = {}
     for j in range(1, ev.size()):
         if ev[j].isFinal() and abs(ev[j].id()) in CHARGED_STABLE:
-            ids[j] = identified_as_muon(ev[j].id(), cfg, rng)
+            ids[j] = reco_lepton_flavor(ev[j].id(), cfg, rng)
     return ids
 
 
-def find_candidate(ev, muid):
+def find_candidate(ev, lepid):
     """Mirror of make_ntuple.find_candidate on a Pythia event record.
     Returns (dst_idx, d0_track_idxs, slow_idx, mu_idx) or None."""
     for i in range(1, ev.size()):
@@ -75,7 +76,7 @@ def find_candidate(ev, muid):
         track_set = set(tracks)
         q_dst = 1 if ev[i].id() > 0 else -1
         mus = [j for j in range(1, ev.size())
-               if j not in track_set and muid.get(j, False)
+               if j not in track_set and lepid.get(j, 0) != 0
                and charge_of(ev[j].id()) == -q_dst]
         if not mus:
             continue
@@ -118,7 +119,7 @@ def main():
         "plep_star", "q2", "m_d0", "delta_m", "cos_by", "r2",
         "p_lep_lab", "costh_lep_lab", "p_dst_lab",
         "m2miss_true", "plep_star_true", "q2_true",
-        "true_mode", "lep_true_pid", "mode_id", "event"]}
+        "true_mode", "lep_true_pid", "lep_flavor", "mode_id", "event"]}
     n_cand = n_rec = 0
 
     for ievt in range(n_events):
@@ -127,7 +128,8 @@ def main():
         if (ievt + 1) % 200000 == 0:
             print(f"generated {ievt + 1} / {n_events} "
                   f"({n_rec} reconstructed)", flush=True)
-        cand = find_candidate(py.event, muon_id_map(py.event, cfg, rng))
+        lepid = lepton_id_map(py.event, cfg, rng)
+        cand = find_candidate(py.event, lepid)
         if cand is None:
             continue
         n_cand += 1
@@ -139,7 +141,8 @@ def main():
         sm_mu = detect_track(four_vec(ev[mu_i]), cfg, rng)
         if any(s is None for s in sm_d0) or sm_slow is None or sm_mu is None:
             continue
-        sm_mu = with_muon_mass(sm_mu)  # muon mass hypothesis (also for fakes)
+        lep_flavor = lepid[mu_i]
+        sm_mu = with_lepton_mass(sm_mu, lep_flavor)  # reco mass hypothesis (also for fakes)
         n_rec += 1
 
         pD0 = np.sum(sm_d0, axis=0)
@@ -193,12 +196,13 @@ def main():
         cols["q2_true"].append(np.nan)
         cols["true_mode"].append(3)
         cols["lep_true_pid"].append(ev[mu_i].id())
+        cols["lep_flavor"].append(lep_flavor)
         cols["mode_id"].append(99)
         cols["event"].append(ievt)
 
     arrays = {k: np.array(v, dtype=np.int32
-                          if k in ("true_mode", "lep_true_pid", "mode_id",
-                                   "event", "n_roe", "q_roe")
+                          if k in ("true_mode", "lep_true_pid", "lep_flavor",
+                                   "mode_id", "event", "n_roe", "q_roe")
                           else np.float64) for k, v in cols.items()}
     with uproot.recreate(out_path) as f:
         f["events"] = arrays

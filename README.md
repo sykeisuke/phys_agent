@@ -46,8 +46,8 @@ export ANTHROPIC_API_KEY=sk-ant-...   # from https://console.anthropic.com (usag
 Then give it a task in plain language:
 
 ```bash
-python -m agent "Using the existing ntuples signal_taunu.root, norm_munu.root and \
-bkg_dststmunu.root, apply the standard D* selection, use scan_cut to find the best \
+python -m agent "Using the existing ntuples signal_taunu.root, norm_lnu.root and \
+bkg_dststlnu.root, apply the standard D* selection, use scan_cut to find the best \
 m2miss threshold, and report the signal selection efficiency."
 ```
 
@@ -55,7 +55,7 @@ The agent first prints its **plan** and stops at the approval gate:
 
 ```text
 === PROPOSED PLAN ===
-- Use existing ntuples only (no new MC): signal_taunu.root, norm_munu.root, bkg_dststmunu.root
+- Use existing ntuples only (no new MC): signal_taunu.root, norm_lnu.root, bkg_dststlnu.root
 - Apply the standard D* selection: |m_d0 - 1.8648| < 0.02, |delta_m - 0.1454| < 0.0025
 - Scan m2miss thresholds with scan_cut (FoM = S/sqrt(S+B)) and pick the working point
 - Report yields, the optimal cut, the signal efficiency, and an overlay plot
@@ -164,17 +164,17 @@ dec file to add a mode):
 
 | dec file | Mode | Model |
 |---|---|---|
-| `B0_Dsttaunu.dec` | B0 → D\*⁻τ⁺ν, τ → μνν | ISGW2 |
-| `B0_Dstmunu.dec` | B0 → D\*⁻μ⁺ν | ISGW2 |
-| `B0_Kstmumu.dec` | B0 → K\*0μ⁺μ⁻ (b → sℓℓ) | BTOSLLBALL |
+| `B0_Dsttaunu.dec` | B0 → D\*⁻τ⁺ν, τ → ℓνν (ℓ = e, μ) | ISGW2 |
+| `B0_Dstlnu.dec` | B0 → D\*⁻ℓ⁺ν (ℓ = e, μ) | ISGW2 |
+| `B0_Kstll.dec` | B0 → K\*0ℓ⁺ℓ⁻ (b → sℓℓ; ee and μμ) | BTOSLLBALL |
 | `generic_bbbar.dec` | generic Υ(4S) → BB̄ (nothing forced) | DECAY.DEC |
 
 (A few further mode files live in `generation/dec/`.) Example:
 
 ```bash
 ./generation/bin/generate generation/dec/B0_Dsttaunu.dec 5000 data/signal_taunu.hepmc 1 generation/dec/tau_native.dec
-./generation/bin/generate generation/dec/B0_Dstmunu.dec  5000 data/norm_munu.hepmc    2 generation/dec/tau_native.dec
-./generation/bin/generate generation/dec/B0_Kstmumu.dec  5000 data/sig_kstmumu.hepmc 30 generation/dec/tau_native.dec
+./generation/bin/generate generation/dec/B0_Dstlnu.dec   5000 data/norm_lnu.hepmc     2 generation/dec/tau_native.dec
+./generation/bin/generate generation/dec/B0_Kstll.dec   10000 data/sig_kstll.hepmc   32 generation/dec/tau_native.dec
 ```
 
 Generation is fast (~2000 events/s) and HepMC ascii files take ~6 KB/event,
@@ -215,7 +215,9 @@ model in `fastsim/smear.py` is applied to every charged track:
 | Momentum resolution | σ_p/p = 0.5% (Gaussian; direction unchanged, E recomputed from the true mass) |
 | Acceptance | 17° < θ_lab < 150° (Belle II CDC-like) |
 | Tracking efficiency | 95% per track, flat in p and θ |
-| Muon identification | ε_μ = 90%; fake rates π→μ = 2%, K→μ = 1% (constant, v1); identified tracks get the **μ mass hypothesis** |
+| Muon identification | ε_μ = 90%; fake rates π→μ = 2%, K→μ = 1% (constant, v1) |
+| Electron identification | ε_e = 95%; fake rates π/K→e = 0.5% (no bremsstrahlung modeling yet) |
+| Mass hypothesis | identified leptons get the e/μ mass hypothesis — misID'd hadrons peak in shifted positions |
 
 Events in which any signal-chain track is lost are discarded as
 reconstruction failures. The detector model is deliberately minimal and
@@ -357,15 +359,15 @@ are essentially unchanged (their widths are physics-dominated).
 
 | mode_id | Sample | Role |
 |---|---|---|
-| 0 | B0 → D\*τν, τ → μνν | signal |
-| 1 | B0 → D\*μν | normalization (and bkg via resolution tail) |
-| 2 | B0 → D\*\*μν, D\*\* → D\*π0 | dominant background (semileptonic feed-down) |
+| 0 | B0 → D\*τν, τ → ℓνν (ℓ = e, μ) | signal |
+| 1 | B0 → D\*ℓν | normalization (and bkg via resolution tail) |
+| 2 | B0 → D\*\*ℓν, D\*\* → D\*π0 | dominant background (semileptonic feed-down) |
 
 ```bash
-./generation/bin/generate generation/dec/B0_Dststmunu.dec 5000 data/bkg_dststmunu.hepmc 3 generation/dec/tau_native.dec
+./generation/bin/generate generation/dec/B0_Dststlnu.dec 5000 data/bkg_dststlnu.hepmc 3 generation/dec/tau_native.dec
 python fastsim/make_ntuple.py data/signal_taunu.hepmc   data/signal_taunu.root   0 42
-python fastsim/make_ntuple.py data/norm_munu.hepmc      data/norm_munu.root      1 43
-python fastsim/make_ntuple.py data/bkg_dststmunu.hepmc  data/bkg_dststmunu.root  2 44
+python fastsim/make_ntuple.py data/norm_lnu.hepmc       data/norm_lnu.root       1 43
+python fastsim/make_ntuple.py data/bkg_dststlnu.hepmc   data/bkg_dststlnu.root   2 44
 ```
 
 | | |
@@ -420,17 +422,18 @@ conservative 10 % normalization, to be replaced by proper estimates from
 published analyses). The fit uses the full shape, and the ROE energy cut
 (`e_tag_cm < 4.0`) suppresses the wrong-muon combinatorial background:
 
+Both lepton channels are used (electron ID is stronger at Belle II, and the
+e/μ split is reported separately by the scripts):
+
 | Method | BF(B0 → D\*τν) | relative stat. @ 1 ab⁻¹ |
 |---|---|---|
-| cut & count, no ROE | (2.77 ± 2.19) % | ~4.5 % |
-| cut & count, + ROE energy cut | (3.05 ± 2.14) % | ~4.3 % |
-| pyhf template fit, no ROE | (1.48 ± 1.72) % | ~3.5 % |
-| pyhf template fit, + ROE energy cut | (1.48 ± 0.89) % | **~1.9 %** |
+| cut & count (e + μ) | (2.47 ± 1.40) % | ~2.8 % |
+| pyhf template fit, μ only | (1.48 ± 0.89) % | ~1.9 % |
+| pyhf template fit, e + μ | (1.48 ± 0.80) % | **~1.7 %** |
 
-(Numbers include the muon-ID efficiency and hadron fake rates; **14 % of
-the signal-region background is a misidentified hadron**, so the ROE cut —
-which rejects wrongly paired lepton candidates of both kinds — matters
-even more once fakes are modeled.)
+(Numbers include the lepton-ID efficiencies and hadron fake rates — ~14 %
+of the signal-region background is a misidentified hadron; the ROE energy
+cut rejects wrongly paired lepton candidates of both kinds.)
 
 (The fit's central value closes exactly by construction — the signal
 template is the truth component of the same pseudo-dataset; taking the
@@ -443,29 +446,39 @@ reconstruction.
 
 ---
 
-## 9. Second demonstration: B0 → K\*0μ⁺μ⁻
+## 9. Second demonstration: B0 → K\*0ℓ⁺ℓ⁻
 
 To show the pipeline is not tied to missing-energy modes, the rare decay
-B0 → K\*0(→ K⁺π⁻)μ⁺μ⁻ (b → sℓℓ, `BTOSLLBALL` form-factor model) runs
+B0 → K\*0(→ K⁺π⁻)ℓ⁺ℓ⁻ (b → sℓℓ, `BTOSLLBALL` model, ee and μμ) runs
 through the identical chain. With no neutrino the candidate is fully
 reconstructed, and the standard full-reconstruction variables apply
-(`mbc`, `delta_e` — the basf2 `Mbc`/`deltaE` — plus the dimuon mass `m_ll`
-for the charmonium vetoes):
+(`mbc`, `delta_e` — the basf2 `Mbc`/`deltaE` — plus the dilepton mass
+`m_ll`):
 
 ```bash
-./generation/bin/generate generation/dec/B0_Kstmumu.dec 5000 data/sig_kstmumu.hepmc 30 generation/dec/tau_native.dec
-python fastsim/make_ntuple_exclusive.py data/sig_kstmumu.hepmc data/sig_kstmumu.root 20 31
+./generation/bin/generate generation/dec/B0_Kstll.dec 10000 data/sig_kstll.hepmc 32 generation/dec/tau_native.dec
+./generation/bin/generate generation/dec/B0_JpsiKst.dec 5000 data/bkg_jpsikst.hepmc 34 generation/dec/tau_native.dec
+python fastsim/make_ntuple_exclusive.py data/sig_kstll.hepmc   data/sig_kstll.root   20 33
+python fastsim/make_ntuple_exclusive.py data/bkg_jpsikst.hepmc data/bkg_jpsikst.root 21 35
+python analysis/sensitivity_kstll.py
 ```
 
-![Kst mumu demo](docs/figures/kstmumu_demo.png)
+The dominant **peaking background**, B0 → J/ψ(→ℓℓ)K\*0, shares the signal's
+visible final state at ~10³ times the rate and is removed with vetoes in
+`m_ll`. The veto windows are **asymmetric and wider for electrons** — the
+radiated-photon tail pushes m(e⁺e⁻) below the J/ψ peak, exactly as in real
+analyses:
 
-Efficiency 56 % (4 tracks); M_bc peaks at m_B with σ ≈ 15 MeV. The dashed
-lines mark the J/ψ and ψ(2S) windows where the charmonium peaking
-background (B → J/ψ K\*, J/ψ → μμ — present in the generic BB̄ sample at
-its known branching fraction) is vetoed in real analyses. Peaking
-backgrounds that rely on particle misidentification (e.g. B0 → K\*0π⁺π⁻
-with π → μ fakes) are **not** modeled: the fast simulation has no PID layer
-— adding fake rates is a natural extension.
+| channel | efficiency | S @ 1 ab⁻¹ | J/ψK\* before veto | after veto | δBF/BF (stat) |
+|---|---|---|---|---|---|
+| ee | 43.1 % | 317 | 25 700 | 368 | 8.3 % |
+| μμ | 38.2 % | 286 | 23 100 | 518 | 9.9 % |
+
+![Kst ll veto demo](docs/figures/kstll_veto_demo.png)
+
+Not modeled: combinatorial background (Mbc/ΔE sidebands handle it in a real
+analysis) and misID peaking backgrounds beyond the lepton fake rates (the
+fast sim has no hadron-ID confusion yet).
 
 ---
 
