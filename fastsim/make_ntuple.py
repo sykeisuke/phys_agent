@@ -38,6 +38,7 @@ from smear import (DetectorConfig, detect_photon, detect_track,
                    reco_lepton_flavor, with_lepton_mass)
 
 B_PIDS = {511, -511}
+B_ANCESTOR_PIDS = {511, -511, 521, -521}
 DST_PIDS = {413, -413}
 MU_PIDS = {13, -13}
 CHARGED_STABLE = {211, 321, 13, 11, 2212}
@@ -92,10 +93,11 @@ def stable_descendants(part, pid_set=None):
 
 
 def b_ancestor(part):
+    """Nearest B-meson ancestor (neutral or charged), or None (continuum)."""
     v = part.production_vertex
     while v and v.particles_in:
         mom = v.particles_in[0]
-        if mom.pid in B_PIDS:
+        if mom.pid in B_ANCESTOR_PIDS:
             return mom
         v = mom.production_vertex
     return None

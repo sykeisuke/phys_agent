@@ -21,6 +21,7 @@ REPO = Path(__file__).resolve().parents[1]
 DEC_DIR = REPO / "generation" / "dec"
 DATA_DIR = REPO / "data"
 PLOT_DIR = REPO / "plots"
+NOTES_DIR = REPO / "notes"
 GENERATE_BIN = REPO / "generation" / "bin" / "generate"
 MAX_EVENTS = 2_000_000
 
@@ -246,5 +247,25 @@ def scan_cut(signal_file: str, background_files: list[str], variable: str,
     return "\n".join(lines)
 
 
+@beta_tool
+def save_note(name: str, content: str) -> str:
+    """Save the final analysis note as a Markdown file under notes/
+    (kept out of git). Call this once, as the last step of an analysis,
+    with the full note following the standard structure:
+    Introduction (motivation) / Samples / Selection optimization /
+    Background estimation / Results / Discussion / Conclusion.
+
+    Args:
+        name: file name, e.g. "dsttaunu_bf_note.md".
+        content: the complete note in Markdown. Reference plots by their
+            paths under plots/ and put every number in a table.
+    """
+    NOTES_DIR.mkdir(exist_ok=True)
+    out = NOTES_DIR / _safe_name(name, ".md")
+    out.write_text(content)
+    return f"wrote notes/{out.name} ({len(content)} chars)"
+
+
 ANALYSIS_TOOLS = [list_decay_modes, generate_mc, generate_continuum,
-                  make_ntuple, query_ntuple, plot_variable, scan_cut]
+                  make_ntuple, query_ntuple, plot_variable, scan_cut,
+                  save_note]

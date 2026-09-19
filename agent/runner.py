@@ -24,9 +24,17 @@ You work together with a student. Follow this loop strictly:
    tool. Do not generate MC or run any other tool before approval.
 2. EXECUTE: after approval, run the pipeline tools. Fix seeds for
    reproducibility. If a tool fails, diagnose and retry with a fix.
-3. REPORT: finish with a short Markdown report: what was done, the
-   numbers in a table, which plots were written, and what the student
-   should look at next.
+3. REPORT: give a short Markdown report in the conversation: what was
+   done, the numbers in a table, which plots were written.
+4. NOTE: for a full analysis (one that produced a physics result, not a
+   quick check), finish by writing a complete analysis note with the
+   save_note tool, structured as: Introduction (motivation, citing the
+   analyses followed) / Samples (table: process, generator+model, events,
+   seeds) / Selection optimization (variables, scans, chosen cuts) /
+   Background estimation (composition, method) / Results (cut & count and
+   any fits, with uncertainties) / Discussion (limitations, systematics
+   not yet evaluated) / Conclusion. Every number in the note must come
+   from a tool result of this session.
 
 Analysis policy:
 - Before designing a selection, check whether a published analysis of the
@@ -49,13 +57,17 @@ level, intuition before equations.
 
 REVIEWER_PROMPT = """\
 You are a strict but constructive physics-analysis reviewer at a B factory.
-You are shown an analysis PLAN produced by another agent. Approve it only if:
-- the samples, event counts, and seeds are stated and reasonable (<= 2M events);
-- the selection is cut & count with named variables (no NN/BDT);
-- it says which existing analysis (if any) the variable choices follow;
-- it states what will be reported (efficiencies, yields, plots).
-Reply with exactly one line starting with either
-"APPROVE" or "REVISE: <specific, actionable feedback>".
+You are shown an analysis PLAN produced by another agent. Write a short
+structured review:
+
+CHECKLIST (one line each, PASS/FAIL + one-sentence justification):
+- samples: event counts and seeds stated and reasonable (<= 2M events)?
+- selection: cut & count with named variables (no NN/BDT)?
+- precedent: does it say which published analysis the variables follow?
+- deliverables: efficiencies, yields, and plots specified?
+CONCERNS: anything risky or missing (or "none").
+VERDICT: exactly one final line, either "APPROVE" or
+"REVISE: <specific, actionable feedback>".
 """
 
 
@@ -80,8 +92,16 @@ def make_approval_tool(review: str, client, model: str):
                 model=model, max_tokens=1024, system=REVIEWER_PROMPT,
                 messages=[{"role": "user", "content": plan}])
             text = next(b.text for b in verdict.content if b.type == "text").strip()
-            print(f"[AI reviewer] {text}")
-            if text.upper().startswith("APPROVE"):
+            print(f"[AI reviewer]\n{text}")
+            # append the full review to a session log
+            from datetime import datetime
+            from .tools import NOTES_DIR
+            NOTES_DIR.mkdir(exist_ok=True)
+            with open(NOTES_DIR / "review_log.md", "a") as f:
+                f.write(f"\n## Review {datetime.now():%Y-%m-%d %H:%M}\n\n"
+                        f"### Plan\n{plan}\n\n### Review\n{text}\n")
+            last = text.strip().splitlines()[-1].upper()
+            if "APPROVE" in last and "REVISE" not in last:
                 return "approved by the AI reviewer — proceed"
             return f"rejected — revise the plan. Reviewer feedback: {text}"
         answer = input("Approve this plan? [y/N] ").strip().lower()
