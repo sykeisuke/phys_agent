@@ -1,31 +1,30 @@
 # Analysis notes
 
-Two kinds of notes live here, and the distinction matters:
+**The deliverables are the two agent-written PDFs in this directory** —
+if you only read two files, read these:
 
-- **Agent-written notes** are produced end to end by the framework
-  (Plan -> review -> Execute -> Report -> Note): every number comes from a
-  tool result of the session, and in AI-review mode the note is refereed
-  before it is accepted. These are the framework's actual deliverables.
-- **Hand-written reference notes** were authored by a human (with LLM
-  assistance) as the quality standard the agent-written notes are measured
-  against.
+| Note | Content |
+|---|---|
+| [dsttaunu_note_agent.pdf](dsttaunu_note_agent.pdf) | B(B0 -> D*taunu) on the luminosity-matched pseudo-dataset: per-variable selection with stacked figures and scans, cutflow, background composition with control regions, counting + simultaneous e/mu pyhf fit, statistical-only sensitivity projection with a literature-sourced systematic floor |
+| [kstll_note_agent.pdf](kstll_note_agent.pdf) | B0 -> K*0 l+l- sensitivity: K*/Mbc/deltaE selection with scans, per-flavor charmonium vetoes, cutflow, yields at 1/ab; citations retrieved by the agent via web search |
 
-| File | Author | Content |
-|---|---|---|
-| [dsttaunu_note_agent.pdf](dsttaunu_note_agent.pdf) ([md](dsttaunu_note_agent.md)) | **agent-written** | B(B0 -> D*taunu) on the luminosity-matched pseudo-dataset: per-variable selection with stacked figures and scans, cutflow, background composition with control regions, counting + simultaneous e/mu pyhf fit, statistical-only sensitivity projection with a literature-sourced systematic floor |
-| [dsttaunu_bf_note.pdf](dsttaunu_bf_note.pdf) | hand-written reference | same measurement, human-written version kept as the quality benchmark (adds toy validation) |
-| [kstll_note_agent.pdf](kstll_note_agent.pdf) ([md](kstll_note_agent.md)) | **agent-written** | B0 -> K*0 l+l- sensitivity: K*/Mbc/deltaE selection with scans, per-flavor charmonium vetoes, cutflow, yields at 1/ab; citations retrieved by the agent via web search |
-| [kstll_sensitivity_note.pdf](kstll_sensitivity_note.pdf) | hand-written reference | earlier human-written version of the K*ll study, kept for comparison |
+These notes were produced end to end by the framework
+(Plan -> review -> Execute -> Report -> Note): every number comes from a
+tool result of the session, and in AI-review mode the note is refereed
+before it is accepted. The agent's accepted Markdown source of each note
+sits next to its PDF ([dsttaunu](dsttaunu_note_agent.md),
+[kstll](kstll_note_agent.md)); all referenced figures are bundled under
+`figures/`, and all numbers are reproducible from the fixed seeds listed
+inside each note.
 
-All figures referenced by the agent notes are bundled under `figures/`.
-The agent-note PDFs are typeset LaTeX versions of the agent's accepted
-Markdown notes (the `.tex` sources live next to the PDFs): the text and
-every number are the agent's, unedited; the typography — math notation,
-booktabs tables, figure floats and captions — was added by hand in this
-round. The workflow now includes a TYPESET stage (`save_note_latex`) in
-which the agent produces this LaTeX version itself after its Markdown
-note passes the AI referee; that stage is implemented but has not yet
-been exercised in a paid run, so the current PDFs were typeset by hand
-from the agent's Markdown. `analysis/render_note.py` remains as the
-quick mechanical Markdown-to-PDF fallback.
-All numbers are reproducible from the fixed seeds listed inside each note.
+**Provenance of the PDFs.** They are typeset LaTeX versions of the
+agent's accepted Markdown notes (the `.tex` sources live next to the
+PDFs): the text and every number are the agent's, unedited; the
+typography — math notation, booktabs tables, figure floats and captions,
+references — was added by hand in this round. The workflow now includes
+a TYPESET stage (`save_note_latex`) in which the agent produces this
+LaTeX version itself after its Markdown note passes the AI referee; that
+stage is implemented but has not yet been exercised in a paid run, so
+the current PDFs were typeset by hand from the agent's Markdown.
+`analysis/render_note.py` remains as the quick mechanical
+Markdown-to-PDF fallback.
