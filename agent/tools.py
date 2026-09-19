@@ -299,15 +299,33 @@ def save_note(name: str, content: str) -> str:
 
 
 
+BRANCH_LABELS = {
+    "m_visible": r"$m(K\pi)$ [GeV]",
+    "mbc": r"$M_{\mathrm{bc}}$ [GeV]",
+    "delta_e": r"$\Delta E$ [GeV]",
+    "m_ll": r"$m(\ell\ell)$ [GeV]",
+    "m_d0": r"$m(K\pi)$ [GeV]",
+    "delta_m": r"$\Delta m$ [GeV]",
+    "r2": r"$R_2$",
+    "e_tag_cm": r"$E_{\mathrm{tag}}^{\mathrm{CM}}$ [GeV]",
+    "m2miss": r"$m^2_{\mathrm{miss}}$ [GeV$^2$]",
+    "q2": r"$q^2$ [GeV$^2$]",
+    "p_lep_cm": r"$p^{*}_{\ell}$ [GeV]",
+}
+
+
 @beta_tool
 def plot_stacked(root_files: list[str], weights: list[float], variable: str,
                  output_name: str, selection: str = "m2miss > -999",
                  x_min: float = 0.0, x_max: float = 10.0, n_bins: int = 40,
-                 cut_lines: list[float] | None = None) -> str:
+                 cut_lines: list[float] | None = None,
+                 sample_labels: list[str] | None = None,
+                 x_label: str = "", log_y: bool = False) -> str:
     """Publication-style stacked histogram of one variable, split by the
     true origin of each candidate (true_mode x lepton truth), with optional
     vertical cut lines. Use this for the note figures: preselection windows,
-    discriminating variables, control regions.
+    discriminating variables, control regions. When the ntuples carry no
+    true_mode branch, the stack is one component per input file instead.
 
     Args:
         root_files: ntuple files in data/ forming the dataset.
@@ -319,12 +337,21 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
         x_max: upper histogram edge.
         n_bins: number of bins.
         cut_lines: optional x positions for dashed cut indicators.
+        sample_labels: legend labels for the per-file stacks (no-truth
+            ntuples only; same length/order as root_files; matplotlib
+            mathtext allowed). Default: the file names.
+        x_label: x-axis label (mathtext allowed); common branches get a
+            physics label with units automatically.
+        log_y: log y scale — use it whenever components differ by orders
+            of magnitude, so the small ones stay visible.
     """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     if len(weights) != len(root_files):
         return "error: weights must match root_files"
+    if sample_labels and len(sample_labels) != len(root_files):
+        return "error: sample_labels must match root_files"
     comps = {0: ("other $B$ decays", "#bdbdbd"),
              2: (r"$B \to D^{*}\ell\nu$", "#64b5f6"),
              3: (r"continuum $q\bar q$", "#c9a227"),
@@ -362,9 +389,10 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
         for i, (rf, wt) in enumerate(zip(root_files, weights)):
             t = _load(rf)
             m = _apply_cut(t, selection)
+            lab = sample_labels[i] if sample_labels else Path(rf).stem
             per_file.append((float(m.sum() * wt), t[variable][m],
                              np.full(int(m.sum()), wt),
-                             Path(rf).stem, file_colors[i % len(file_colors)]))
+                             lab, file_colors[i % len(file_colors)]))
         for _, v, w, lab, col in sorted(per_file, reverse=True,
                                         key=lambda x: x[0]):
             if len(v):
@@ -379,8 +407,10 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
                 color=cols, label=labs)
     for x in (cut_lines or []):
         ax.axvline(x, color="k", ls="--", lw=1.2)
-    ax.set_xlabel(variable)
+    ax.set_xlabel(x_label or BRANCH_LABELS.get(variable, variable))
     ax.set_ylabel("candidates / bin (weighted)")
+    if log_y:
+        ax.set_yscale("log")
     ax.legend(fontsize=8)
     fig.tight_layout()
     out = PLOT_DIR / _safe_name(output_name, ".png")
