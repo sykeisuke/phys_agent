@@ -206,6 +206,29 @@ WEB_SEARCH_TOOL = {
     "max_uses": 8,
 }
 
+# USD per million tokens (input, output) — for the end-of-run cost report
+PRICES = {"claude-opus-5": (5, 25), "claude-sonnet-5": (2, 10),
+          "claude-haiku-4-5": (1, 5)}
+
+
+def dry_run(task: str) -> None:
+    """Exercise the tool plumbing WITHOUT any API call (no cost): runs a
+    canned mini-sequence (read_references -> list_decay_modes ->
+    query_ntuple on a standard file) and prints the results. Use this to
+    test tool changes before spending API budget."""
+    print(f"[dry-run] task (not sent anywhere): {task!r}")
+    from .tools import list_decay_modes, query_ntuple, read_references
+    print("[dry-run] read_references ->",
+          read_references.call({})[:120].replace("\n", " "), "...")
+    print("[dry-run] list_decay_modes ->",
+          list_decay_modes.call({}).splitlines()[0], "...")
+    try:
+        print("[dry-run] query_ntuple ->",
+              query_ntuple.call({"root_file": "signal_taunu.root"}))
+    except Exception as e:
+        print(f"[dry-run] query_ntuple failed: {e}")
+    print("[dry-run] tool plumbing OK — no API call was made")
+
 
 def run(task: str, model: str = MODEL, max_turns: int = 60,
         review: str = "human") -> None:
@@ -225,6 +248,7 @@ def run(task: str, model: str = MODEL, max_turns: int = 60,
     messages = [{"role": "user", "content": task}]
     turns = 0
     restarts = 0
+    tok_in = tok_out = 0
     while True:
         runner = client.beta.messages.tool_runner(
             model=model,
@@ -241,6 +265,9 @@ def run(task: str, model: str = MODEL, max_turns: int = 60,
         for message in runner:
             last = message
             turns += 1
+            if message.usage:
+                tok_in += message.usage.input_tokens
+                tok_out += message.usage.output_tokens
             for block in message.content:
                 if block.type == "text" and block.text.strip():
                     print(block.text)
@@ -262,3 +289,7 @@ def run(task: str, model: str = MODEL, max_turns: int = 60,
         if restarts > 5:
             print("!! giving up: turn still paused after 5 restarts")
             break
+    pin, pout = PRICES.get(model, (5, 25))
+    cost = tok_in / 1e6 * pin + tok_out / 1e6 * pout
+    print(f"[usage] {turns} API turns, {tok_in:,} in / {tok_out:,} out "
+          f"tokens ~= ${cost:.2f} ({model}; reviewer calls excluded)")
