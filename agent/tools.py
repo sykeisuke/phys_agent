@@ -146,10 +146,12 @@ def query_ntuple(root_file: str, selection: str = "m2miss > -999") -> str:
         root_file: ROOT file name in data/, e.g. "signal_taunu.root".
         selection: numpy boolean expression over the branch names, e.g.
             "(abs(m_d0 - 1.8648) < 0.02) & (abs(delta_m - 0.14543) < 0.0025)".
-            Available branches: m2miss, plep_star, q2, m_d0, delta_m,
-            p_lep_lab, costh_lep_lab, p_dst_lab, m2miss_true, plep_star_true,
-            q2_true, true_mode (1 = D* tau nu, 2 = D* mu nu, 0 = other),
-            mode_id, event.
+            Available branches: m2miss, m2miss_roe, e_tag_cm, m_tag, n_roe,
+            q_roe, plep_star, q2, m_d0, delta_m, cos_by, r2, p_lep_lab,
+            costh_lep_lab, p_dst_lab, m2miss_true, plep_star_true, q2_true,
+            true_mode (1 = D* tau nu, 2 = D* l nu, 0 = other B, 3 = continuum),
+            lep_true_pid (true PDG id of the lepton candidate),
+            lep_flavor (reconstructed: 11 = e, 13 = mu), mode_id, event.
     """
     t = _load(root_file)
     mask = _apply_cut(t, selection)
@@ -162,15 +164,21 @@ def query_ntuple(root_file: str, selection: str = "m2miss > -999") -> str:
 @beta_tool
 def plot_variable(root_files: list[str], variable: str, output_name: str,
                   selection: str = "m2miss > -999",
+                  selections: list[str] | None = None,
+                  labels: list[str] | None = None,
                   x_min: float = 0.0, x_max: float = 10.0, n_bins: int = 50) -> str:
     """Plot one ntuple variable for one or more samples (normalized overlay)
     and save it under plots/.
 
     Args:
-        root_files: ROOT file names in data/, e.g. ["signal_taunu.root", "norm_munu.root"].
+        root_files: ROOT file names in data/, e.g. ["signal_taunu.root", "norm_lnu.root"].
         variable: branch name to plot, e.g. "m2miss".
         output_name: output PNG name, e.g. "m2miss_compare.png".
-        selection: numpy boolean expression applied before plotting.
+        selection: numpy boolean expression applied to every file.
+        selections: optional per-curve selections (same length as root_files);
+            overrides `selection` and allows overlaying different cuts on the
+            SAME file, e.g. the two lepton flavors.
+        labels: optional per-curve legend labels (same length as root_files).
         x_min: lower edge of the histogram.
         x_max: upper edge of the histogram.
         n_bins: number of bins.
@@ -179,14 +187,20 @@ def plot_variable(root_files: list[str], variable: str, output_name: str,
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    if selections is not None and len(selections) != len(root_files):
+        return "error: selections must have the same length as root_files"
+    if labels is not None and len(labels) != len(root_files):
+        return "error: labels must have the same length as root_files"
     PLOT_DIR.mkdir(exist_ok=True)
     bins = np.linspace(x_min, x_max, n_bins + 1)
     fig, ax = plt.subplots(figsize=(6.4, 4.4))
-    for rf in root_files:
+    for i, rf in enumerate(root_files):
         t = _load(rf)
-        mask = _apply_cut(t, selection)
+        cut = selections[i] if selections is not None else selection
+        mask = _apply_cut(t, cut)
+        label = labels[i] if labels is not None else rf.replace(".root", "")
         ax.hist(t[variable][mask], bins=bins, histtype="step", lw=2,
-                density=True, label=rf.replace(".root", ""))
+                density=True, label=label)
     ax.set_xlabel(variable)
     ax.set_ylabel("normalized entries")
     ax.legend()
