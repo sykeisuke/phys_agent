@@ -32,7 +32,7 @@ You work together with a student. Follow this loop strictly:
    done, the numbers in a table, which plots were written.
 4. NOTE: for a full analysis (one that produced a physics result, not a
    quick check), finish by writing a complete analysis note with the
-   save_note tool, structured as: Introduction (motivation, citing the
+   save_note tool, structured as: Abstract (a self-contained quantitative summary) / Introduction (motivation, citing the
    analyses followed) / Samples (table: process, generator+model, events,
    seeds) / Selection optimization (variables, scans, chosen cuts) /
    Background estimation (composition, method) / Results (cut & count and

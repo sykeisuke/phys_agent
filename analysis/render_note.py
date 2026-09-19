@@ -10,8 +10,13 @@ after its paragraph), and renders a PDF with pandoc.
 This is a mechanical publication step: the note's text is not edited
 beyond inserting image embeds for figures the note already references.
 
-usage: python analysis/render_note.py notes/<note>.md docs/notes/
+The PDF gets the standard front matter (title from the note's first
+heading, author line, version/date, and the public-materials disclaimer);
+an "## Abstract" section, when present, becomes a proper LaTeX abstract.
+
+usage: python analysis/render_note.py notes/<note>.md docs/notes/ [version]
 """
+import datetime
 import re
 import shutil
 import subprocess
@@ -58,14 +63,47 @@ def main():
 
     md_out = out_dir / src.name
     md_out.write_text(text)
+
+    # front matter for the PDF: title from the first heading, an optional
+    # "## Abstract" section lifted into a LaTeX abstract, the author line,
+    # a version/date, and the public-materials disclaimer.
+    version = sys.argv[3] if len(sys.argv) > 3 else "v1.0"
+    body = text
+    title = src.stem.replace("_", " ")
+    m = re.match(r"\s*#\s+(.+)\n", body)
+    if m:
+        title = m.group(1).strip()
+        body = body[m.end():]
+    abstract = ""
+    am = re.search(r"##\s*Abstract\s*\n(.*?)(?=\n##\s)", body, re.S)
+    if am:
+        abstract = " ".join(am.group(1).split())
+        body = body[:am.start()] + body[am.end():]
+    date = f"{version} — {datetime.date.today():%B %d, %Y}"
+    disclaimer = ("This study uses only publicly available tools and "
+                  "publications. No Belle II internal materials — data, MC, "
+                  "internal notes, or the software framework — are used. "
+                  "Everything is open-source and runs on a laptop.")
+    body_path = out_dir / (src.stem + "_body.md")
+    body_path.write_text(body)
     pdf_out = out_dir / (src.stem + ".pdf")
-    subprocess.run(
-        ["pandoc", md_out.name, "-o", pdf_out.name,
-         "--pdf-engine=xelatex",  # notes contain unicode (superscripts, Greek)
-         "-V", "geometry:margin=1in", "-V", "fontsize=11pt",
-         # fonts with full symbol coverage (arrows, ≠, ∈) on macOS
-         "-V", "mainfont=Arial Unicode MS", "-V", "monofont=Menlo"],
-        check=True, cwd=out_dir)
+    cmd = ["pandoc", body_path.name, "-s", "-o", pdf_out.name,
+           "--pdf-engine=xelatex",
+           "--metadata", f"title={title}",
+           "--metadata", "author=K. Yoshihara (University of Hawai\u02bbi "
+                         "at M\u0101noa)",
+           "--metadata", "author=analysis performed and written by an LLM "
+                         "agent (Claude) under human review",
+           "--metadata", f"date={date}",
+           "-V", "geometry:margin=1in", "-V", "fontsize=11pt",
+           "-V", "mainfont=Arial Unicode MS", "-V", "monofont=Menlo",
+           "-V", f"include-before=\\begin{{center}}\\fbox{{"
+                 f"\\parbox{{0.9\\textwidth}}{{\\small {disclaimer}"
+                 f"}}}}\\end{{center}}"]
+    if abstract:
+        cmd += ["--metadata", f"abstract={abstract}"]
+    subprocess.run(cmd, check=True, cwd=out_dir)
+    body_path.unlink()
     print(f"published {md_out} (+{len(figures)} figures) and {pdf_out}")
 
 
