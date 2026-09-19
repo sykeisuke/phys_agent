@@ -1,5 +1,21 @@
-
 # Sensitivity study: B0 -> K*0(K+pi-) l+l- with a J/psi K*0 peaking background
+
+## Abstract
+
+Using existing fast-simulation ntuples (10000 generated B0 -> K*0 l+l-
+signal events and 5000 generated B0 -> J/psi(->l+l-) K*0 background
+events, split evenly between e+e- and mu+mu-), we apply the Belle/Belle
+II B -> K*(892)l+l- selection: a K pi mass window (0.896 +- 0.075 GeV),
+Mbc > 5.27 GeV, an asymmetric per-flavor DeltaE window, and an
+asymmetric charmonium veto in m_ll. Before the veto the J/psi K*0
+control region is essentially pure background (20645 e+e- and 19132
+mu+mu- events at 1 ab^-1, purity 99.89%); after the veto the leakage
+drops to 43.2 events (e+e-) and consistent with zero, 68%-CL upper
+limit ~25 events (mu+mu-), a signal-efficiency step of 92.5% versus a
+background rejection of 99.8-100%. At 1 ab^-1 the projected yields are
+285.7 e+e- and 251.8 mu+mu- signal candidates, giving ~6.3% relative
+statistical precision per flavor and 4.5% combined. Continuum and
+generic-BBbar combinatorial background are not modeled in this study.
 
 ## 1. Introduction
 

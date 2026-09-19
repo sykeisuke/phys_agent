@@ -1,5 +1,21 @@
 # Measurement of BF(B0 → D*⁻τ⁺ν) on a Belle II–like pseudo-dataset
 
+## Abstract
+
+This note extracts BF(B0→D*⁻τ⁺ν) from an existing ~0.9 fb⁻¹-equivalent Belle
+II-like pseudo-dataset (generic BBbar + continuum), using a D0-mass/Δm
+preselection, R2<0.4 continuum suppression, e_tag_cm<5.4 GeV wrong-pairing
+rejection and an m²_miss>1.0 GeV² signal region, reaching 46.4% signal
+efficiency and 7.7% signal-region purity (dominant background: generic
+other-B, 73.6%). A truth-subtracted cut-and-count gives BF = 2.53% ± 0.25%
+(stat), 1.71× the 1.483% generator truth, while a simultaneous e/μ template
+fit in m²_miss closes exactly on the generator truth: BF = 1.48% ± 0.73%.
+A statistical-only Asimov luminosity projection of the fit predicts the
+uncertainty would shrink to ±0.015% (1.0% relative) at 1 ab⁻¹, but published
+Belle II systematic-uncertainty breakdowns suggest a realistic measurement
+would flatten at a ~3% systematic floor well before that level of precision
+is reached.
+
 ## 1. Introduction
 
 Semitauonic B decays B → D*τν are sensitive probes of lepton-flavor universality and of
