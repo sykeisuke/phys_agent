@@ -330,14 +330,16 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
              3: (r"continuum $q\bar q$", "#c9a227"),
              None: ("fake lepton", "#8d6e63"),
              1: (r"signal", "crimson")}
+    file_colors = ["#bdbdbd", "#64b5f6", "#c9a227", "#8d6e63", "crimson"]
     bins = np.linspace(x_min, x_max, n_bins + 1)
     vals, ws, labs, cols = [], [], [], []
-    for mode, (lab, col) in comps.items():
-        v, w = [], []
-        for rf, wt in zip(root_files, weights):
-            t = _load(rf)
-            m = _apply_cut(t, selection)
-            if "true_mode" in t:
+    have_truth = all("true_mode" in _load(rf) for rf in root_files)
+    if have_truth:
+        for mode, (lab, col) in comps.items():
+            v, w = [], []
+            for rf, wt in zip(root_files, weights):
+                t = _load(rf)
+                m = _apply_cut(t, selection)
                 lep_ok = np.isin(np.abs(t.get("lep_true_pid",
                                               t["true_mode"] * 0 + 13)),
                                  (11, 13))
@@ -345,15 +347,31 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
                     m = m & ~lep_ok
                 else:
                     m = m & (t["true_mode"] == mode) & lep_ok
-            elif mode is not None:
-                continue  # no truth labels: single unlabeled stack
-            v.append(t[variable][m])
-            w.append(np.full(int(m.sum()), wt))
-        if v and sum(len(x) for x in v):
-            vals.append(np.concatenate(v))
-            ws.append(np.concatenate(w))
-            labs.append(lab)
-            cols.append(col)
+                v.append(t[variable][m])
+                w.append(np.full(int(m.sum()), wt))
+            if v and sum(len(x) for x in v):
+                vals.append(np.concatenate(v))
+                ws.append(np.concatenate(w))
+                labs.append(lab)
+                cols.append(col)
+    else:
+        # no true_mode branch (exclusive ntuples): the truth label is the
+        # sample itself, so stack one component per input file, largest
+        # yield at the bottom, labeled by the file name
+        per_file = []
+        for i, (rf, wt) in enumerate(zip(root_files, weights)):
+            t = _load(rf)
+            m = _apply_cut(t, selection)
+            per_file.append((float(m.sum() * wt), t[variable][m],
+                             np.full(int(m.sum()), wt),
+                             Path(rf).stem, file_colors[i % len(file_colors)]))
+        for _, v, w, lab, col in sorted(per_file, reverse=True,
+                                        key=lambda x: x[0]):
+            if len(v):
+                vals.append(v)
+                ws.append(w)
+                labs.append(lab)
+                cols.append(col)
     PLOT_DIR.mkdir(exist_ok=True)
     fig, ax = plt.subplots(figsize=(6.6, 4.4))
     if vals:
