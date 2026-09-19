@@ -65,7 +65,11 @@ of the preceding cuts.
 Following Waheed et al., a genuine D0 candidate and a genuine slow pion from D*→D0π
 are required:
 - |m(Kπ) − 1.8648| < 0.020 GeV (`plots/presel_m_d0.png`)
+
+![presel_m_d0.png](figures/presel_m_d0.png)
 - |Δm − 0.1454| < 0.0025 GeV (`plots/presel_delta_m.png`)
+
+![presel_delta_m.png](figures/presel_delta_m.png)
 
 These reject random Kπ combinations and remove the fake slow-pion background; on
 signal_taunu.root this combination keeps 2672/2801 = 95.4% of reconstructed candidates.
@@ -78,6 +82,8 @@ Discussion.)
 
 The Fox–Wolfram ratio R2 separates jetty continuum events (large R2) from the more
 isotropic BBbar topology (`plots/presel_r2.png`). A scan of R2 < threshold
+
+![presel_r2.png](figures/presel_r2.png)
 (signal = signal_taunu.root, background = generic+continuum) gives:
 
 | R2 cut | S | B | S/√(S+B) |
@@ -96,6 +102,8 @@ the surviving signal.
 `e_tag_cm`, the CM energy of the rest-of-event ("tag") side, clusters near the beam
 energy (~5.29 GeV) for correctly identified events and develops a high-side tail for
 wrong D*–lepton pairings and generic BBbar combinatorics (`plots/presel_e_tag_cm.png`).
+
+![presel_e_tag_cm.png](figures/presel_e_tag_cm.png)
 Scanning e_tag_cm < threshold:
 
 | e_tag_cm cut | S | B | S/√(S+B) |
@@ -115,6 +123,8 @@ previous cuts while rejecting a substantial wrong-pairing/generic tail.
 m²_miss is the primary τν vs ℓν discriminant (BaBar): the two extra neutrinos in the
 τ decay push m²_miss to higher values than the single-neutrino D*ℓν decays
 (`plots/presel_m2miss.png`, cut line at 1.0 GeV²). Scanning m2miss > threshold on top
+
+![presel_m2miss.png](figures/presel_m2miss.png)
 of all preceding cuts:
 
 | m²_miss cut (GeV²) | S | B | S/√(S+B) |
@@ -151,6 +161,8 @@ the flat region of each scan.
 generic ×1.0, continuum ×0.995), obtained by summing `query_ntuple` results over the 8
 dataset files and illustrated in `plots/sr_composition_q2.png`:
 
+![sr_composition_q2.png](figures/sr_composition_q2.png)
+
 | Component | Weighted yield | Fraction |
 |---|---:|---:|
 | D*τν (true_mode=1) | 99.0 | 7.7% |
@@ -170,8 +182,14 @@ with `plot_stacked`:
 | CR | Selection | Weighted N | Dominant component | Purity |
 |---|---|---:|---|---:|
 | Continuum-enriched | presel + R2 > 0.5 | 426.9 | continuum | 97.7% (`plots/cr_continuum_m2miss.png`) |
+
+![cr_continuum_m2miss.png](figures/cr_continuum_m2miss.png)
 | Normalization-enriched | presel+R2+e_tag_cm + −1<m²_miss<0.5 | 1369.6 | D*ℓν | 80.8% (`plots/cr_norm_plep_star.png`) |
+
+![cr_norm_plep_star.png](figures/cr_norm_plep_star.png)
 | Wrong-pairing/generic-enriched | presel+R2 + e_tag_cm ≥ 5.4 | 1889.4 | other B | 78.5% (`plots/cr_generic_m2miss.png`) |
+
+![cr_generic_m2miss.png](figures/cr_generic_m2miss.png)
 
 These three regions validate, respectively, the R2 cut (continuum control, 97.7%
 pure), the m²_miss cut (normalization control, 80.8% D*ℓν — the expected companion
@@ -209,6 +227,8 @@ the background estimate itself, which is not attempted here.
 *without* the m²_miss cut, which is instead the fit variable), with
 `signal_selection = (true_mode==1) & (|lep_true_pid| ∈ {11,13})`, simultaneous e/μ fit
 (`plots/fit_m2miss_taunu.png`):
+
+![fit_m2miss_taunu.png](figures/fit_m2miss_taunu.png)
 
 | Channel | μ | BF = μ × 1.483% |
 |---|---:|---:|
@@ -277,7 +297,11 @@ BF via BF = μ × 1.483% (generator truth, §2):
 | 50 ab⁻¹ | 0.2% | 1.483% ± 0.003% |
 
 (figure: `plots/projection_fit_m2miss_taunu_projection.png`; post-fit reproduction:
+
+![projection_fit_m2miss_taunu_projection.png](figures/projection_fit_m2miss_taunu_projection.png)
 `plots/fit_m2miss_taunu_projection.png`).
+
+![fit_m2miss_taunu_projection.png](figures/fit_m2miss_taunu_projection.png)
 
 **This projection is statistical-only and should not be read as a realistic forecast
 below the sub-percent level.** Several caveats apply, consistent with §6:

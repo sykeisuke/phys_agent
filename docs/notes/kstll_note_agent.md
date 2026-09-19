@@ -110,6 +110,8 @@ retaining ~84% of both samples while removing the far tails where a real
 combinatorial background (not modeled here) would dominate.
 Figure: `plots/01_mvisible_presel.png` (cut lines at the window edges).
 
+![01_mvisible_presel.png](figures/01_mvisible_presel.png)
+
 ### 3.2 Beam-energy-constrained mass (Mbc)
 
 *Targets:* combinatorial/continuum background populating low Mbc (not
@@ -131,6 +133,8 @@ there would remove signal, not background. **Mbc > 5.27 GeV** is chosen,
 following Wei et al., retaining 96% of the K*-window sample.
 Figure: `plots/02_mbc_afterkst.png` (cut line at 5.27 GeV).
 
+![02_mbc_afterkst.png](figures/02_mbc_afterkst.png)
+
 ### 3.3 Energy difference (DeltaE), per lepton flavor
 
 *Targets:* partially reconstructed or extra-energy background; for
@@ -151,6 +155,10 @@ Chosen: **-0.10 < DeltaE < 0.05 GeV**, a narrower low side than for
 electrons, reproducing the qualitative asymmetry reported by Wei et al.
 
 Figures: `plots/03_deltae_ee.png`, `plots/03_deltae_mumu.png` (cut lines
+
+![03_deltae_ee.png](figures/03_deltae_ee.png)
+
+![03_deltae_mumu.png](figures/03_deltae_mumu.png)
 at the chosen edges).
 
 ### 3.4 Charmonium (J/psi) veto in m_ll, asymmetric per flavor
@@ -179,6 +187,10 @@ adopted as the final veto, confirmed rather than re-derived by the scan:
 | mu+mu- | 2.946 - 3.176 GeV |
 
 Figures: `plots/04_mll_ee_veto.png`, `plots/04_mll_mumu_veto.png`.
+
+![04_mll_ee_veto.png](figures/04_mll_ee_veto.png)
+
+![04_mll_mumu_veto.png](figures/04_mll_mumu_veto.png)
 
 ## 4. Full cutflow (per flavor, per sample)
 
