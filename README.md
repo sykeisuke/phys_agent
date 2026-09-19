@@ -315,8 +315,9 @@ vetoes). Results, plots, and the commands to reproduce them:
 The agent's final products are **analysis notes** (Plan → Execute → Report
 → Note): after a full analysis it writes a structured note — Introduction /
 Samples / Selection optimization / Background estimation / Results /
-Discussion / Conclusion — to `notes/` (kept out of git) via its `save_note`
-tool, with every number taken from the session's tool results.
+Discussion / Conclusion — via its `save_note` tool, with every number taken
+from the session's tool results. Two complete notes are published in
+**[docs/notes/](docs/notes/)**.
 
 ---
 

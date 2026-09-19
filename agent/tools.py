@@ -153,12 +153,20 @@ def query_ntuple(root_file: str, selection: str = "m2miss > -999") -> str:
             true_mode (1 = D* tau nu, 2 = D* l nu, 0 = other B, 3 = continuum),
             lep_true_pid (true PDG id of the lepton candidate),
             lep_flavor (reconstructed: 11 = e, 13 = mu), mode_id, event.
+            Ntuples from make_ntuple_exclusive.py instead carry: m2miss,
+            plep_star, q2, m_visible, mbc, delta_e, m_ll, r2, e_tag_cm,
+            m_tag, n_roe, q_roe, n_tracks, n_photons, n_mu, lep_flavor,
+            mode_id, event (no true_mode).
     """
     t = _load(root_file)
     mask = _apply_cut(t, selection)
     parts = [f"total: {len(mask)}", f"pass: {int(mask.sum())}"]
-    for mode, label in [(1, "true D*taunu"), (2, "true D*munu"), (0, "true other")]:
-        parts.append(f"{label}: {int((mask & (t['true_mode'] == mode)).sum())}")
+    if "true_mode" in t:
+        for mode, label in [(1, "true D*taunu"), (2, "true D*lnu"),
+                            (0, "true other B"), (3, "continuum")]:
+            n = int((mask & (t["true_mode"] == mode)).sum())
+            if n:
+                parts.append(f"{label}: {n}")
     return ", ".join(parts)
 
 
