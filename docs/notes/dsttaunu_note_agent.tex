@@ -71,16 +71,17 @@ following the reconstruction strategy of the published \emph{untagged}
 semileptonic $B\to D^{*}\ell\nu$ analyses:
 
 \begin{itemize}
-\item \textbf{Waheed et al.\ [Belle], PRD 100, 052007 (2019)} --- $D^0$
-  mass window, narrow $\Delta m$ (slow-pion) window, Fox--Wolfram $R_2$
-  for continuum suppression, $e/\mu$ channels treated separately and
-  combined.
-\item \textbf{BaBar, PRD 88, 072012 (2013)} --- $\mmiss$ as the primary
-  discriminant between single-neutrino ($D^{*}\ell\nu$) and
-  multi-neutrino ($D^{*}\tau\nu$) final states.
-\item \textbf{Caria et al.\ [Belle], PRL 124, 161803 (2020)} and
-  \textbf{Belle~II, PRD 110, 072020 (2024)} --- simultaneous $e/\mu$
-  template fit sharing one signal strength.
+\item \textbf{Waheed et al.\ [Belle], PRD 100, 052007
+  (2019)}~\cite{Waheed:2019} --- $D^0$ mass window, narrow $\Delta m$
+  (slow-pion) window, Fox--Wolfram $R_2$ for continuum suppression,
+  $e/\mu$ channels treated separately and combined.
+\item \textbf{BaBar, PRD 88, 072012 (2013)}~\cite{BaBar:2013} ---
+  $\mmiss$ as the primary discriminant between single-neutrino
+  ($D^{*}\ell\nu$) and multi-neutrino ($D^{*}\tau\nu$) final states.
+\item \textbf{Caria et al.\ [Belle], PRL 124, 161803
+  (2020)}~\cite{Caria:2020} and \textbf{Belle~II, PRD 110, 072020
+  (2024)}~\cite{BelleII:2024} --- simultaneous $e/\mu$ template fit
+  sharing one signal strength.
 \end{itemize}
 
 The measurement is performed both as a cut-and-count and as a binned
@@ -151,8 +152,8 @@ distribution or a scan on top of the preceding cuts.
 \subsection{Preselection: \texorpdfstring{$D^0$ mass and $\Delta m$}{D0 mass and Delta m} windows}
 \label{sec:presel}
 
-Following Waheed et al., a genuine $D^0$ candidate and a genuine slow
-pion from $D^{*}\to D^0\pi$ are required:
+Following Waheed et al.~\cite{Waheed:2019}, a genuine $D^0$ candidate
+and a genuine slow pion from $D^{*}\to D^0\pi$ are required:
 \begin{itemize}
 \item $|m(K\pi) - 1.8648| < 0.020$\,GeV (Fig.~\ref{fig:presel_m_d0})
 \item $|\Delta m - 0.1454| < 0.0025$\,GeV (Fig.~\ref{fig:presel_delta_m})
@@ -264,7 +265,8 @@ wrong-pairing/generic tail.
 
 \subsection{Signal region: \texorpdfstring{$\mmiss$}{m2miss}}
 
-$\mmiss$ is the primary $\tau\nu$ vs.\ $\ell\nu$ discriminant (BaBar):
+$\mmiss$ is the primary $\tau\nu$ vs.\ $\ell\nu$ discriminant
+(BaBar~\cite{BaBar:2013}):
 the two extra neutrinos in the $\tau$ decay push $\mmiss$ to higher
 values than the single-neutrino $D^{*}\ell\nu$ decays
 (Fig.~\ref{fig:presel_m2miss}, cut line at 1.0\,GeV$^2$). Scanning
@@ -631,11 +633,10 @@ consistent with \S\ref{sec:discussion}:
   branching-fraction measurement quotes systematic contributions of order
   1.9\% ($N_{B\bar B}$, $f_{+-}/f_{00}$), 0.9--1.2\% (tracking),
   0.8--1.7\% ($D$-meson branching fractions) and 1.2--3.1\% (lepton ID),
-  summing in quadrature to a few percent [Belle~II, arXiv:2210.13143];
+  summing in quadrature to a few percent~\cite{BelleII:2210};
   the Belle~II hadronic-tag $R(D^{*})$ analysis separately reports
   $\approx$2.1\% from hadronic-$B$-decay modeling and $\approx$2.0\% from
-  fit-template PDF-shape systematics [Adachi et al., PRD 110, 072020
-  (2024), arXiv:2401.02840]. Taking these together as representative of
+  fit-template PDF-shape systematics~\cite{BelleII:2024}. Taking these together as representative of
   an untagged $D^{*}\tau\nu$ measurement with a similar reconstruction
   strategy, \textbf{a realistic projection would flatten at a systematic
   floor of roughly 3\%} once the statistical uncertainty drops below that
@@ -691,7 +692,8 @@ consistent with \S\ref{sec:discussion}:
   this fast simulation: a dedicated $\Delta m$-sideband scan
   (\S\ref{sec:presel}) found zero candidates outside a narrow band around
   the true $\Delta m$, so the classic ``fake $D^{*}$'' control region of
-  Waheed et al.\ could not be reproduced here; a full detector simulation
+  Waheed et al.~\cite{Waheed:2019} could not be reproduced here; a full
+  detector simulation
   would populate this sideband and it should be added as a fourth control
   region.
 \item \textbf{Single-variable, cut-based continuum/wrong-pairing
@@ -743,6 +745,30 @@ this --- not luminosity --- would set the ultimate precision. A real
 measurement would replace the truth-based background subtraction with
 data control regions, add the systematic uncertainties listed above, and
 validate the fit with independent toy studies.
+
+\begin{thebibliography}{9}
+\addcontentsline{toc}{section}{References}
+
+\bibitem{Waheed:2019}
+E.~Waheed et al.\ (Belle Collaboration),
+Phys.\ Rev.\ D \textbf{100}, 052007 (2019).
+
+\bibitem{BaBar:2013}
+J.~P.~Lees et al.\ (BaBar Collaboration),
+Phys.\ Rev.\ D \textbf{88}, 072012 (2013).
+
+\bibitem{Caria:2020}
+G.~Caria et al.\ (Belle Collaboration),
+Phys.\ Rev.\ Lett.\ \textbf{124}, 161803 (2020).
+
+\bibitem{BelleII:2024}
+I.~Adachi et al.\ (Belle~II Collaboration),
+Phys.\ Rev.\ D \textbf{110}, 072020 (2024), arXiv:2401.02840.
+
+\bibitem{BelleII:2210}
+Belle~II Collaboration, arXiv:2210.13143.
+
+\end{thebibliography}
 
 \appendix
 \section*{Appendix: Referee comments (unresolved)}
