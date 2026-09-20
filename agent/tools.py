@@ -391,21 +391,23 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
         # no true_mode branch (exclusive ntuples): the truth label is the
         # sample itself, so stack one component per input file, largest
         # yield at the bottom, labeled by the file name
-        per_file = []
+        groups = {}  # label -> [yield, values, weights] (files merged)
         for i, (rf, wt) in enumerate(zip(root_files, weights)):
             t = _load(rf)
             m = _apply_cut(t, selection)
             lab = sample_labels[i] if sample_labels else Path(rf).stem
-            per_file.append((float(m.sum() * wt), t[variable][m],
-                             np.full(int(m.sum()), wt),
-                             lab, file_colors[i % len(file_colors)]))
-        for _, v, w, lab, col in sorted(per_file, reverse=True,
-                                        key=lambda x: x[0]):
+            g = groups.setdefault(lab, [0.0, [], []])
+            g[0] += float(m.sum() * wt)
+            g[1].append(t[variable][m])
+            g[2].append(np.full(int(m.sum()), wt))
+        ordered = sorted(groups.items(), reverse=True, key=lambda kv: kv[1][0])
+        for i, (lab, (_, v, w)) in enumerate(ordered):
+            v = np.concatenate(v)
             if len(v):
                 vals.append(v)
-                ws.append(w)
+                ws.append(np.concatenate(w))
                 labs.append(lab)
-                cols.append(col)
+                cols.append(file_colors[i % len(file_colors)])
     PLOT_DIR.mkdir(exist_ok=True)
     fig, ax = plt.subplots(figsize=(6.6, 4.4))
     if vals:
