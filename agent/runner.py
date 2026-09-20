@@ -262,6 +262,7 @@ def run(task: str, model: str = MODEL, max_turns: int = 60,
         runner = client.beta.messages.tool_runner(
             model=model,
             max_tokens=32000,
+            stream=True,  # >10-min requests require streaming (SDK guard)
             system=SYSTEM_PROMPT,
             tools=tools,
             messages=messages,
@@ -271,7 +272,11 @@ def run(task: str, model: str = MODEL, max_turns: int = 60,
             fallbacks="default",
         )
         last = None
-        for message in runner:
+        for item in runner:
+            # with stream=True the runner yields message streams; the
+            # loop body only needs the final message of each turn
+            message = item.get_final_message() if hasattr(
+                item, "get_final_message") else item
             last = message
             turns += 1
             if message.usage:
