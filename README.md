@@ -110,12 +110,15 @@ phys_agent/
 │   ├── dec/                # EvtGen decay files, one per mode (section 4)
 │   ├── src/generate.cc     # EvtGen driver (HepMC3 output)
 │   ├── generate_continuum.py   # Pythia8 continuum -> ntuple, one pass
+│   ├── generate_continuum_exclusive.py # Pythia8 -> combinatorial K pi l l
 │   ├── basf2/              # basf2 steering templates (untested here)
 │   └── build.sh            # build script
 ├── fastsim/                # parametric detector response (section 5)
 │   ├── smear.py            # tracks, photons, lepton ID + fake rates
 │   ├── make_ntuple.py      # D*-chain candidates -> flat ROOT ntuple
 │   ├── make_ntuple_exclusive.py # any forced exclusive mode (lnu / ll)
+│   ├── combinatorial.py    # K pi l+ l- combinatorial candidate builder
+│   ├── make_ntuple_combinatorial.py # generic BBbar -> combinatorial K pi l l
 │   └── apply_fastsim.py    # truth-vs-smeared comparison plots
 ├── analysis/
 │   ├── plot_m2miss.py      # truth-level plots
@@ -289,6 +292,17 @@ finder in `make_ntuple.py` targets D\* chains; `make_ntuple_exclusive.py`
 is a truth-seeded, mode-agnostic producer for any forced exclusive mode
 (B → hadrons + μν, or fully charged B → hadrons + μ⁺μ⁻), adding the
 full-reconstruction variables `mbc`, `delta_e`, and `m_ll`.
+`make_ntuple_combinatorial.py` (and, for continuum,
+`generation/generate_continuum_exclusive.py`) instead builds **every**
+K±π∓ ℓ⁺ℓ⁻ combination inside loose windows, so generic BB̄ and continuum
+can serve as the combinatorial background of the exclusive K\*ℓℓ
+analyses; the extra branch `ll_true_src` flags lepton pairs from a true
+J/ψ or ψ(2S):
+
+```bash
+python fastsim/make_ntuple_combinatorial.py <in.hepmc> <out.root> <mode_id> <seed>
+python generation/generate_continuum_exclusive.py 1500000 data/comb_continuum_0.root 201
+```
 
 ---
 

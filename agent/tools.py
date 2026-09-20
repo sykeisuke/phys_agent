@@ -156,7 +156,13 @@ def query_ntuple(root_file: str, selection: str = "m2miss > -999") -> str:
             Ntuples from make_ntuple_exclusive.py instead carry: m2miss,
             plep_star, q2, m_visible, mbc, delta_e, m_ll, r2, e_tag_cm,
             m_tag, n_roe, q_roe, n_tracks, n_photons, n_mu, lep_flavor,
-            mode_id, event (no true_mode).
+            mode_id, event (no true_mode; identify samples by mode_id or
+            by file). Combinatorial background ntuples (comb_*.root, from
+            make_ntuple_combinatorial.py / generate_continuum_exclusive.py:
+            every K pi l+ l- combination in generic BBbar or continuum,
+            loose windows |m(Kpi)-0.896|<0.25, mbc>5.20, |delta_e|<0.40)
+            carry the same branches plus ll_true_src (1 if both leptons
+            come from the same true J/psi or psi(2S), else 0).
     """
     t = _load(root_file)
     mask = _apply_cut(t, selection)
@@ -443,7 +449,9 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
         weights: per-file luminosity weights (same length as data_files).
         variable: branch to histogram, e.g. "m2miss".
         signal_selection: truth expression defining S, e.g.
-            "(true_mode==1) & (abs(lep_true_pid)==13)".
+            "(true_mode==1) & (abs(lep_true_pid)==13)"; for exclusive
+            ntuples without true_mode, use the sample label instead,
+            e.g. "mode_id == 1".
         output_name: post-fit PNG name under plots/.
         selection: preselection applied to everything.
         x_min: histogram lower edge.
