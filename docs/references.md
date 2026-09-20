@@ -57,6 +57,27 @@ R(D(\*)).
 - Similar structure; multivariate continuum suppression; charmonium
   vetoes with radiative-tail treatment for electrons.
 
+## Wei et al. (Belle), PRL 103, 171801 (2009) — B -> K* l+ l-
+
+First statistically significant B -> K*(892) l+ l- measurement.
+Reconstruction: K* mass window around 0.896 GeV; beam-constrained mass
+Mbc > 5.27 GeV and an energy-difference Delta E window, asymmetric and
+wider on the low side for electrons (bremsstrahlung). Charmonium
+backgrounds B -> J/psi(psi(2S)) K* removed with asymmetric vetoes in the
+dilepton mass, again wider on the low side for e+e-; the vetoed
+J/psi K* sample serves as the control channel for efficiencies and PID.
+Dominant remaining backgrounds: continuum qqbar and generic BBbar
+combinatorics, fit with an ARGUS shape in Mbc and a linear Delta E.
+
+## Belle II, arXiv:2206.05946 — B -> K*(892) l+ l- with 189 fb^-1
+
+Same selection strategy as Wei et al. with explicit veto windows:
+J/psi excluded for M(mu+mu-) in [2.946, 3.176] GeV and M(e+e-) in
+[2.846, 3.176] GeV (psi(2S) vetoed similarly at its mass). Signal
+extracted from a 2D unbinned Mbc-Delta E fit (ARGUS + linear for
+combinatorial background); about 40-80 signal candidates per channel at
+189 fb^-1. Continuum suppressed with event-shape variables.
+
 ## Conventions for a publication-grade analysis note
 
 - Every section opens with a short paragraph saying what the section

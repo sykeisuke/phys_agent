@@ -1,12 +1,13 @@
 # Analysis notes
 
-**The deliverables are the two agent-written PDFs in this directory** —
-if you only read two files, read these:
+**The deliverables are the agent-written PDFs in this directory** —
+if you only read two files, read the D*taunu note and the K*ll v2 note:
 
 | Note | Content |
 |---|---|
 | [dsttaunu_note_agent.pdf](dsttaunu_note_agent.pdf) | B(B0 -> D*taunu) on the luminosity-matched pseudo-dataset: per-variable selection with stacked figures and scans, cutflow, background composition with control regions, counting + simultaneous e/mu pyhf fit, statistical-only sensitivity projection with a literature-sourced systematic floor |
-| [kstll_note_agent.pdf](kstll_note_agent.pdf) | B0 -> K*0 l+l- sensitivity: K*/Mbc/deltaE selection with scans, per-flavor charmonium vetoes, cutflow, yields at 1/ab; citations retrieved by the agent via web search |
+| [kstll_note_agent_v2.pdf](kstll_note_agent_v2.pdf) | B0 -> K*0 l+l- sensitivity **v2**: adds combinatorial generic-BBbar and continuum background (new combinatorial candidate builder), R2 continuum suppression, psi(2S) veto, and an Mbc template fit with luminosity projection; **typeset and compiled by the agent itself** (first run of the TYPESET stage — [md](kstll_note_agent_v2.md), [tex](kstll_note_agent_v2.tex)) |
+| [kstll_note_agent.pdf](kstll_note_agent.pdf) | B0 -> K*0 l+l- sensitivity v1 (superseded by v2): signal + J/psi K*0 peaking background only, no combinatorial background; kept to show the progression |
 
 These notes were produced end to end by the framework
 (Plan -> review -> Execute -> Report -> Note): every number comes from a

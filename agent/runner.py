@@ -11,7 +11,7 @@ from anthropic import beta_tool
 
 from .tools import ANALYSIS_TOOLS, NOTES_DIR, _safe_name
 
-MODEL = "claude-opus-5"
+MODEL = "claude-sonnet-5"
 
 SYSTEM_PROMPT = """\
 You are a physics-analysis agent for a Belle II-like sensitivity-study
@@ -261,7 +261,8 @@ def run(task: str, model: str = MODEL, max_turns: int = 60,
     while True:
         runner = client.beta.messages.tool_runner(
             model=model,
-            max_tokens=16000,
+            max_tokens=32000,
+            stream=True,  # >10-min requests require streaming (SDK guard)
             system=SYSTEM_PROMPT,
             tools=tools,
             messages=messages,
@@ -271,7 +272,11 @@ def run(task: str, model: str = MODEL, max_turns: int = 60,
             fallbacks="default",
         )
         last = None
-        for message in runner:
+        for item in runner:
+            # with stream=True the runner yields message streams; the
+            # loop body only needs the final message of each turn
+            message = item.get_final_message() if hasattr(
+                item, "get_final_message") else item
             last = message
             turns += 1
             if message.usage:
