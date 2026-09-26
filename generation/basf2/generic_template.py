@@ -142,11 +142,11 @@ def build_path(mode, n_events, dec_file, out_file, bkg_files):
                     evtNumList=[n_events])
 
     # Event generation with EvtGen
-    if mode not in SIG_MODES:
+    if mode in SIG_MODES:
         # User decay file forces the signal chain (e.g. tau -> mu nu nu)
         ge.add_evtgen_generator(main, finalstate="signal",
                                 signaldecfile=str(dec_file))
-    elif mode not in GEN_MODES:
+    elif mode in GEN_MODES:
         # Generic B Bbar: 'mixed' (neutral) or 'charged'
         ge.add_evtgen_generator(main, finalstate=mode)
     else:
@@ -190,7 +190,7 @@ def main():
     b2.conditions.prepend_globaltag(GLOBAL_TAG)
 
     b2.B2INFO(f"Mode: {args.mode}, "
-              f"events: {args.n_events}, output: {out_file}")
+              f"events: {args.n_events}, \ndec: {dec_file}, \noutput: {out_file}")
 
     path = build_path(args.mode, args.n_events, dec_file, out_file, bkg_files)
 
