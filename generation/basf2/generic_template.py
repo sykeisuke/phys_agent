@@ -176,7 +176,7 @@ def main():
     # Fail early if a signal mode is missing its decay file
     if args.mode not in DEC_MODES:
         sys.exit("{args.mode} not registered. Fix or add.")
-    if args.mode not in ["mixed", "charged"] and not dec_file.is_file():
+    if not dec_file.is_file():
         sys.exit(f"Decay file not found: {dec_file}")
 
     # Make sure the output directory exists
