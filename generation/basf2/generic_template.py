@@ -102,14 +102,16 @@ def parse_args():
                         help=f"project root directory (default: {DEFAULT_HOME})")
     parser.add_argument("--no-bkg", action="store_true",
                         help="simulate without beam-background overlay")
+    parser.add_argument("--suffix", default="", type=str,
+                        help="Append at end of filename")
     return parser.parse_args()
 
 
-def resolve_paths(home, mode):
+def resolve_paths(home, mode, suffix=""):
     """Return (decay_file, output_file) paths for the given mode."""
     home = Path(home).resolve()
     dec_file = home / "generation" / "dec" / f"{mode}.dec"
-    out_file = home / "data" / f"{mode}_mdst.root"
+    out_file = home / "data" / f"{mode}_mdst{suffix}.root"
     return dec_file, out_file
 
 
@@ -171,7 +173,7 @@ def build_path(mode, n_events, dec_file, out_file, bkg_files):
 
 def main():
     args = parse_args()
-    dec_file, out_file = resolve_paths(args.home, args.mode)
+    dec_file, out_file = resolve_paths(args.home, args.mode, args.suffix)
 
     # Fail early if a signal mode is missing its decay file
     if args.mode not in DEC_MODES:
