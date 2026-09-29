@@ -52,13 +52,14 @@ import simulation as si
 #   "signal"  -> use the user decay file generation/dec/<mode>.dec
 
 SIG_MODES = [
-    "D_Ds1Kmunu",
+    "B_Ds1Kmunu",
     "B_DsK1munu",
-    "D_dsstKstmunu",
+    "B0_DsstKstmunu",
     "B0_Dstlnu",
+    "B0_Dststlnu",
     "B0_Dsttaunu",
     "B0_JpsiKst",
-    "B0_Kstl",
+    "B0_Kstll",
     "generic_bbbar",
     "tau_native"
 ]
@@ -110,7 +111,7 @@ def parse_args():
 def resolve_paths(home, mode, suffix=""):
     """Return (decay_file, output_file) paths for the given mode."""
     home = Path(home).resolve()
-    dec_file = home / "generation" / "dec" / f"{mode}.dec"
+    dec_file = home / "generation" / "dec" / "basf2" /f"{mode}.dec"
     out_file = home / "data" / f"{mode}_mdst{suffix}.root"
     return dec_file, out_file
 

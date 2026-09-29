@@ -1,0 +1,5 @@
+Notes about this directory 
+
+2026-09-28 (T. Lam): It seems that basf2 has some assumptions about B-meson naming so we don't need to re-define it. 
+But I don't want to interfere with potential local develpoments so just have two versions, one that is meant
+for the full basf2 release and one for local developers who are removed from basf2 

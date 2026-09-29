@@ -1,0 +1,24 @@
+# Rare decay: B+ -> K*+ l+ l- (l = e, mu; 50/50), BTOSLLBALL model.
+# Fully charged final state: K*+ -> K pi .
+
+Alias      K*+sig       K*+
+Alias      K*-sig       K*-
+ChargeConj K*+sig       K*-sig
+
+Decay Upsilon(4S)
+1.000  B0sig anti-B0sig B0 anti-B0   VSS_BMIX dm;
+Enddecay
+
+Decay B+sig
+0.500  K*+sig e+  e-                 PHOTOS BTOSLLBALL;
+0.500  K*+sig mu+ mu-                PHOTOS BTOSLLBALL;
+Enddecay
+CDecay B-sig
+
+Decay K*+sig
+0.5      K+  pi0                        VSS;
+0.5      K_S0  pi+                        VSS;
+Enddecay
+CDecay K*-sig
+
+End
