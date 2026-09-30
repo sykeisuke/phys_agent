@@ -1,6 +1,8 @@
-# Charmonium peaking background for B+ -> K*+ l+ l-:
+# Charmonium control / peaking background for B+ -> K*+ l+ l-:
 # B+ -> J/psi(-> l+ l-) K*+, same visible final state as the signal.
-# Vetoed in real analyses with windows in m(l+l-).
+# Mirrors B0_JpsiKst.dec (same SVV_HELAMP amplitudes) with the charged-B
+# Upsilon(4S) line and the two K*+ submodes (50/50 = physical ratio; together
+# they are 2/3 of K*+ decays, apply that factor at analysis time).
 
 Alias      B+sig        B+
 Alias      B-sig        B-

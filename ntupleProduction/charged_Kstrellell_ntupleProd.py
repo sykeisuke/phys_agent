@@ -99,15 +99,13 @@ slow_pion_cut = " and ".join([
     "[thetaInCDCAcceptance==1]"
 ])
 
-# [RS] particle-ID requirements from the paper (arXiv:2206.05946, Sec. 3).
-# Without them e+:sig / mu+:sig / K+ / pi+ contain EVERY track (the list name
-# only sets the mass hypothesis), and K pi l l combinatorics explode.
-# Loosen these if you want to study the cuts offline.
+# [RS] loose PID for now, to be validated. Paper values (arXiv:2206.05946, Sec. 3):
+#      electronID > 0.9 and p > 0.4, muonID > 0.9 and p > 0.8, binaryPID > 0.6
 pid_cuts = {
-    "e":  "electronID > 0.9 and p > 0.4",
-    "mu": "muonID > 0.9 and p > 0.8",
-    "K":  "binaryPID(321, 211) > 0.6",   # P(K/pi) > 0.6
-    "pi": "binaryPID(211, 321) > 0.6",   # P(pi/K) > 0.6
+    "e":  "electronID > 0 and p > 0",
+    "mu": "muonID > 0 and p > 0",
+    "K":  "binaryPID(321, 211) > 0",
+    "pi": "binaryPID(211, 321) > 0",
 }
 
 # so I am reconstructing B+ -> K*+ l l   [RS] (comment said D* e nu)
@@ -214,7 +212,7 @@ ma.buildRestOfEvent('B+:sig', inputParticlelists = None ,path=path)
 ma.appendROEMask('B+:sig', 'roe_mask', *roe_mask, path=path)
 # [RS] continuum-suppression variables (paper's BDT inputs: cosTBTO, thrustBm,
 #      CLEO cones, KSFW moments); the same call is commented out in Dstlnu
-ma.buildContinuumSuppression('B+:sig', 'roe_mask', path=path)
+#ma.buildContinuumSuppression('B+:sig', 'roe_mask', path=path)
 # [RS] tag-side vertex, for DeltaZ (B-vertex separation, another BDT input)
 vertex.TagV('B+:sig', MCassociation='breco', confidenceLevel=-1,
             maskName='roe_mask', path=path)
@@ -277,9 +275,9 @@ vm.addAlias("q2", "formula(daughterInvM(1, 2) * daughterInvM(1, 2))")     # q^2 
 vm.addAlias("dz_ll", "abs(daughterDiffOf(1, 2, dz))")                      # BDT input: z-separation of the leptons
 vm.addAlias("B_rank", "extraInfo(absDeltaE_rank)")                         # 1 = best candidate
 # (B vertex probability, another BDT input, is chiProb, already saved via vc.vertex)
-cs_vars = ["R2", "cosTBTO", "cosTBz", "thrustBm", "thrustOm", "DeltaZ",
-           "useCMSFrame(cosTheta)", "roeE(roe_mask)"] + \
-          [f"CleoConeCS({i})" for i in range(1, 10)]
+cs_vars = ["DeltaZ", "useCMSFrame(cosTheta)", "roeE(roe_mask)"]
+#cs_vars += ["R2", "cosTBTO", "cosTBz", "thrustBm", "thrustOm"] + \
+#           [f"CleoConeCS({i})" for i in range(1, 10)]
 kstll_vars = ["m_ll", "q2", "dz_ll", "B_rank"] + cs_vars
 # [RS] K_S0 and pi0 quality for offline cuts (the paper uses a K_S0 BDT on
 #      flight length / pointing, and cuts on the pi0 photons). These give
