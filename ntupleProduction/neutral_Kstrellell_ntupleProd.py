@@ -36,7 +36,6 @@ b2.conditions.prepend_globaltag(ma.getAnalysisGlobaltag()) #needed for FEI
 b2.conditions.prepend_globaltag("release-08-00-09")
 b2.conditions.prepend_globaltag('neutrals_2024')
 
-
 # dummy name for input, can overwrite in basf2 using -i option on command line
 rootInputName = "B0_Kstll_mdst.root" # [RS] was B0_Dstlnu_mdst.root; contains both e and mu
 
@@ -138,9 +137,7 @@ ma.fillParticleList("pi+:Kstr", f"{track_cuts} and {pid_cuts['pi']}", path=path)
 
 # reconstruct Kstr
 # K+pi-
-# [RS] fixed the unterminated string; mass window from the paper (~4 natural widths);
-#      dmID=1 tags the K* submode (read back as Kstr_decayModeID)
-ma.reconstructDecay("K*0:Kpi -> K+:Kstr pi-:Kstr", "0.796 < M < 0.996", dmID=1, path=path)
+ma.reconstructDecay("K*0:Kpi -> K+:Kstr pi-:Kstr", "0.396 < M < 1.396", dmID=1, path=path)
 
 
 
@@ -175,8 +172,7 @@ ma.buildEventKinematics(inputListNames=['pi+:goodtracks', 'gamma:goodclusters'],
 # first making a "J/psi -> l l" placeholder. A J/psi particle whose MC match is
 # really the B makes MCMatching set c_AddedWrongParticle, so isSignal = 0 for
 # every true non-resonant signal event. m(ll) is computed from daughters 1, 2.
-# Paper's fit region: 5.2 < Mbc < 5.29, -0.15 < deltaE < 0.1.
-b_cut = "5.2 < Mbc < 5.29 and -0.15 < deltaE < 0.1"
+b_cut = "Mbc > 5.2 and abs(deltaE) < 0.3"
 if mode == "e":
     # ?addbrems: isSignal ignores the photons added by correctBrems
     ma.reconstructDecay("B0:sig -> K*0:Kpi e+:sig e-:sig ?addbrems", b_cut, path=path)

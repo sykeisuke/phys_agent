@@ -61,7 +61,7 @@ SIG_MODES = [
     "B0_JpsiKst",
     "B0_Kstll",
     "B_Kstll",
-    "B_JpsiKst",   # [RS] charged J/psi K*+ control sample (new dec file)
+    "B_JpsiKst",
     "generic_bbbar",
     "tau_native"
 ]

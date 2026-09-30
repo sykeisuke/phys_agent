@@ -12,9 +12,6 @@ import argparse
 from skim.WGs import fei, semileptonic
 # [RS] the skims used below live in these modules; they were never imported
 from skim.WGs import ewp, tdcpv, btocharmless, quarkonium
-# [RS] standard pi0 and K_S0 lists for the two K*+ submodes
-from stdPi0s import stdPi0s
-from stdV0s import stdKshorts
 
 if len(sys.argv) != 2:
     sys.exit("Usage: Kstrellell_ntupleProd.py <e/mu>")
@@ -132,15 +129,13 @@ if mode == "mu":
     ma.fillParticleList("mu+:sig", f"{track_cuts} and {pid_cuts['mu']}", path=path)
 ma.fillParticleList("K+:Kstr", f"{track_cuts} and {pid_cuts['K']}", path=path)
 ma.fillParticleList("pi+:Kstr", f"{track_cuts} and {pid_cuts['pi']}", path=path)
-# [RS] pi0: fillParticleList cannot build pi0s (it only loads tracks, photons and
-# V0s), so use the standard pi0 list. Its photons ('pi0eff40_May2020') have the
-# paper's thresholds (80 / 30 / 60 MeV); then apply the paper's mass window.
-stdPi0s('eff40_May2020', path=path)
-ma.cutAndCopyList("pi0:Kstr", "pi0:eff40_May2020", "0.1215 < InvM < 0.1415", path=path)
-# [RS] K_S0 -> pi+ pi- (missing before): stdKshorts fits the vertex and fills
-# K_S0:merged; then apply the paper's mass window
-stdKshorts(path=path)
-ma.cutAndCopyList("K_S0:Kstr", "K_S0:merged", "0.4876 < M < 0.5076", path=path)
+ma.fillParticleList("gamma:pi0",
+                    "[[clusterReg == 1 and E > 0.08] or [clusterReg == 2 and E > 0.03] "
+                    "or [clusterReg == 3 and E > 0.06]] and abs(clusterTiming) < 200",
+                    path=path)
+ma.reconstructDecay("pi0:Kstr -> gamma:pi0 gamma:pi0", "0.10 < InvM < 0.16", path=path)
+ma.fillParticleList("K_S0:Kstr -> pi+ pi-", "0.45 < M < 0.55", path=path)
+vertex.treeFit("K_S0:Kstr", conf_level=0.0, path=path)
 # [RS] "pi+:slow" removed: the pi+ from K*+ -> K_S0 pi+ is an ordinary pion
 # (the slow pion belongs to D*+ -> D0 pi+), so pi+:Kstr is used for it
 #TODO: do slow pion efficiency corrections at some point
@@ -152,13 +147,10 @@ ma.cutAndCopyList("K_S0:Kstr", "K_S0:merged", "0.4876 < M < 0.5076", path=path)
 # reconstruct Kstr
 # mode 1: K+ pi0
 # mode 2: KS_0 pi+:slow (should double check slow claim)   [RS] not slow, see above
-# [RS] mass window from the paper (~4 natural widths); dmID tags the submode
-#      (read back as Kstr_decayModeID: 1 = K+ pi0, 2 = K_S0 pi+)
-ma.reconstructDecay("K*+:Kpi0 -> K+:Kstr pi0:Kstr", "0.796 < M < 0.996", dmID=1, path=path)
-ma.reconstructDecay("K*+:Kspi -> K_S0:Kstr pi+:Kstr", "0.796 < M < 0.996", dmID=2, path=path)
+ma.reconstructDecay("K*+:Kpi0 -> K+:Kstr pi0:Kstr", "0.396 < M < 1.396", dmID=1, path=path)
+ma.reconstructDecay("K*+:Kspi -> K_S0:Kstr pi+:Kstr", "0.396 < M < 1.396", dmID=2, path=path)
 
 #now combine the two modes together
-#TODO: fix with correct names here   [RS] names now match the lists above
 ma.copyLists('K*+:all', ['K*+:Kpi0', 'K*+:Kspi'], path=path)
 
 
@@ -194,8 +186,7 @@ ma.buildEventKinematics(inputListNames=['pi+:goodtracks', 'gamma:goodclusters'],
 # first making a "J/psi -> l l" placeholder. A J/psi particle whose MC match is
 # really the B makes MCMatching set c_AddedWrongParticle, so isSignal = 0 for
 # every true non-resonant signal event. m(ll) is computed from daughters 1, 2.
-# Paper's fit region: 5.2 < Mbc < 5.29, -0.15 < deltaE < 0.1.
-b_cut = "5.2 < Mbc < 5.29 and -0.15 < deltaE < 0.1"
+b_cut = "Mbc > 5.2 and abs(deltaE) < 0.3"
 if mode == "e":
     # ?addbrems: isSignal ignores the photons added by correctBrems
     ma.reconstructDecay("B+:sig -> K*+:all e+:sig e-:sig ?addbrems", b_cut, path=path)

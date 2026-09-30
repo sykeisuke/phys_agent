@@ -1,14 +1,9 @@
 # Rare decay: B+ -> K*+ l+ l- (l = e, mu; 50/50), BTOSLLBALL model.
-# K*+ -> K+ pi0 or K_S0 pi+, 50/50. That matches the physical ratio (each is
-# 1/3 of K*+ decays: K*+ -> K0 pi+ is 2/3 and K0 -> K_S0 is 1/2), but the two
-# together are only 2/3 of K*+ decays -- apply that factor at analysis time.
-#
-# Fix vs. PR #1: the Upsilon(4S) line must produce CHARGED B pairs. The PR
-# version decayed Upsilon(4S) -> B0sig anti-B0sig, and since no B0sig decay
-# is defined in this file, both B0s fell back to generic decays: the sample
-# contained no K*+ l+ l- signal at all.
-# One B -> signal, the other generic (same form as official EWP dec files,
-# e.g. 1210432000.dec). B+sig/B-sig aliases come from DECAY_BELLE2.DEC.
+# Fully charged final state: K*+ -> K pi .
+
+Alias      B+sig        B+
+Alias      B-sig        B-
+ChargeConj B+sig        B-sig
 
 Alias      K*+sig       K*+
 Alias      K*-sig       K*-
