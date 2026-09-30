@@ -1,6 +1,10 @@
 # Rare decay: B+ -> K*+ l+ l- (l = e, mu; 50/50), BTOSLLBALL model.
 # Fully charged final state: K*+ -> K pi .
 
+Alias      B+sig        B+
+Alias      B-sig        B-
+ChargeConj B+sig        B-sig
+
 Alias      K*+sig       K*+
 Alias      K*-sig       K*-
 ChargeConj K*+sig       K*-sig
@@ -17,8 +21,8 @@ Enddecay
 CDecay B-sig
 
 Decay K*+sig
-0.5      K+  pi0                        VSS;
-0.5      K_S0  pi+                        VSS;
+0.500  K+    pi0                     VSS;
+0.500  K_S0  pi+                     VSS;
 Enddecay
 CDecay K*-sig
 

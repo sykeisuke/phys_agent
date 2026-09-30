@@ -61,6 +61,7 @@ SIG_MODES = [
     "B0_JpsiKst",
     "B0_Kstll",
     "B_Kstll",
+    "B_JpsiKst",
     "generic_bbbar",
     "tau_native"
 ]

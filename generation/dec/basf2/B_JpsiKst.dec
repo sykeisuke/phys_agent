@@ -1,0 +1,35 @@
+# Charmonium control / peaking background for B+ -> K*+ l+ l-:
+# B+ -> J/psi(-> l+ l-) K*+, same visible final state as the signal.
+# Mirrors B0_JpsiKst.dec (same SVV_HELAMP amplitudes) with the charged-B
+# Upsilon(4S) line and the two K*+ submodes (50/50 = physical ratio; together
+# they are 2/3 of K*+ decays, apply that factor at analysis time).
+
+Alias      K*+sig       K*+
+Alias      K*-sig       K*-
+ChargeConj K*+sig       K*-sig
+
+# J/psisig is already defined in basf2's DECAY_BELLE2.DEC (like B0sig/B+sig),
+# so it must not be defined again here.
+
+Decay Upsilon(4S)
+0.500  B+sig B-                      VSS;
+0.500  B-sig B+                      VSS;
+Enddecay
+
+Decay B+sig
+1.000  J/psisig K*+sig               SVV_HELAMP 0.6417 3.29 0.7556 0.0 0.1312 0.13;
+Enddecay
+CDecay B-sig
+
+Decay J/psisig
+0.500  e+  e-                        PHOTOS VLL;
+0.500  mu+ mu-                       PHOTOS VLL;
+Enddecay
+
+Decay K*+sig
+0.500  K+    pi0                     VSS;
+0.500  K_S0  pi+                     VSS;
+Enddecay
+CDecay K*-sig
+
+End
