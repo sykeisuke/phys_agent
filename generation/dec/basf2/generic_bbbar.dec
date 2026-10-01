@@ -1,0 +1,3 @@
+# Generic Upsilon(4S) -> B Bbar: nothing is forced, all decays follow
+# the DECAY.DEC shipped with EvtGen (B+B- and B0 anti-B0 mixture).
+End
