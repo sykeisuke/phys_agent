@@ -75,8 +75,13 @@ Same selection strategy as Wei et al. with explicit veto windows:
 J/psi excluded for M(mu+mu-) in [2.946, 3.176] GeV and M(e+e-) in
 [2.846, 3.176] GeV (psi(2S) vetoed similarly at its mass). Signal
 extracted from a 2D unbinned Mbc-Delta E fit (ARGUS + linear for
-combinatorial background); about 40-80 signal candidates per channel at
-189 fb^-1. Continuum suppressed with event-shape variables.
+combinatorial background). Published yields at 189 fb^-1: 22 +- 6
+(mu mu), 18 +- 6 (e e), 38 +- 9 combined; branching fractions
+B(B -> K* mu mu) = (1.19 +- 0.31 +0.08/-0.07) x 10^-6,
+B(B -> K* e e) = (1.42 +- 0.48 +- 0.09) x 10^-6,
+B(B -> K* l l) = (1.25 +- 0.30 +0.08/-0.07) x 10^-6. The neutral
+B0 -> K*0(K+ pi-) and charged B+ -> K*+ channels are combined.
+Continuum suppressed with event-shape variables (a BDT in the paper).
 
 ## Conventions for a publication-grade analysis note
 
