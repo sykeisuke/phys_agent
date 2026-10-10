@@ -9,6 +9,7 @@ outputs under data/ and plots/), so the agent cannot touch anything else.
 """
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -26,6 +27,8 @@ GENERATE_BIN = REPO / "generation" / "bin" / "generate"
 MAX_EVENTS = 2_000_000
 
 _NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+_PATH_RE = re.compile(r"^[A-Za-z0-9_.\-/]+$")
+_IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
 def _safe_name(name: str, suffix: str) -> str:
@@ -33,6 +36,84 @@ def _safe_name(name: str, suffix: str) -> str:
     if not _NAME_RE.match(name) or "/" in name or not name.endswith(suffix):
         raise ValueError(f"invalid file name {name!r} (expected *{suffix})")
     return name
+
+
+def _data_path(root_file: str) -> Path:
+    """Resolve an ntuple name to a file under data/ (subdirectories such
+    as data/kekcc/x.root are allowed; escaping data/ is not)."""
+    if (not _PATH_RE.match(root_file) or ".." in root_file
+            or root_file.startswith("/") or not root_file.endswith(".root")):
+        raise ValueError(f"invalid ntuple path {root_file!r}")
+    # normalize without following symlinks (data/kekcc may be a link)
+    path = Path(os.path.normpath(DATA_DIR / root_file))
+    if DATA_DIR not in path.parents:
+        raise ValueError(f"{root_file!r} is outside data/")
+    return path
+
+
+_TREE_CACHE: dict = {}
+_TREE_NAME: dict = {}
+
+
+def _tree(root_file: str):
+    """The analysis TTree of a file: 'events' (this framework's producers),
+    else 'ntuple' (basf2), else the only / first TTree in the file."""
+    import uproot
+    path = _data_path(root_file)
+    key = str(path)
+    if key not in _TREE_CACHE:
+        f = uproot.open(path)
+        trees = [k.split(";")[0] for k, cls in f.classnames().items()
+                 if cls in ("TTree", "ROOT::RNTuple")]
+        name = next((n for n in ("events", "ntuple") if n in trees),
+                    trees[0] if trees else None)
+        if name is None:
+            raise ValueError(f"{root_file}: no TTree found")
+        _TREE_CACHE[key] = f[name]
+        _TREE_NAME[key] = name
+    return _TREE_CACHE[key]
+
+
+def _tree_name(root_file: str) -> str:
+    _tree(root_file)
+    return _TREE_NAME[str(_data_path(root_file))]
+
+
+def _branches(root_file: str) -> list:
+    return [k.split(";")[0] for k in _tree(root_file).keys()]
+
+
+def _load(root_file: str, columns=None):
+    """Read branches as numpy arrays; columns=None reads everything."""
+    return _tree(root_file).arrays(columns, library="np")
+
+
+def _load_for(root_file: str, *exprs: str):
+    """Read only the branches named in the given expressions/variables
+    (keeps 300-branch official ntuples fast and small in memory)."""
+    have = set(_branches(root_file))
+    names = set()
+    for e in exprs:
+        if e:
+            names.update(_IDENT_RE.findall(e))
+    cols = sorted(names & have)
+    missing = sorted(n for n in names & set(_known_free_symbols(exprs)) if n not in have)
+    if missing:
+        raise KeyError(f"{root_file}: unknown branch(es) {missing}; "
+                       f"call inspect_ntuple to list the available ones")
+    if not cols:  # e.g. selection "1 == 1": keep one column for the length
+        cols = [_branches(root_file)[0]]
+    return _load(root_file, cols)
+
+
+def _known_free_symbols(exprs):
+    """Identifiers in expressions that are not functions/keywords."""
+    skip = {"abs", "log", "sqrt", "and", "or", "not", "True", "False", "None"}
+    out = []
+    for e in exprs:
+        if e:
+            out.extend(n for n in _IDENT_RE.findall(e) if n not in skip)
+    return out
 
 
 @beta_tool
@@ -120,12 +201,6 @@ def generate_continuum(n_events: int, output_name: str, seed: int) -> str:
     return "\n".join(proc.stdout.strip().splitlines()[-2:])
 
 
-def _load(root_file: str, columns=None):
-    import uproot
-    path = DATA_DIR / _safe_name(root_file, ".root")
-    return uproot.open(path)["events"].arrays(columns, library="np")
-
-
 def _apply_cut(arrays: dict, selection: str) -> np.ndarray:
     """Evaluate a numpy boolean expression over the ntuple branches.
 
@@ -135,50 +210,128 @@ def _apply_cut(arrays: dict, selection: str) -> np.ndarray:
     """
     ns = {"abs": np.abs, "log": np.log, "sqrt": np.sqrt, "__builtins__": {}}
     ns.update(arrays)
-    mask = eval(selection, ns)  # noqa: S307 — restricted namespace, local tool
-    return np.asarray(mask, dtype=bool)
+    mask = np.asarray(eval(selection, ns), dtype=bool)  # noqa: S307 — restricted namespace
+    if mask.ndim == 0:  # a constant selection such as "1 == 1"
+        n = len(next(iter(arrays.values()))) if arrays else 0
+        mask = np.full(n, bool(mask))
+    return mask
 
 
 @beta_tool
-def query_ntuple(root_file: str, selection: str = "m2miss > -999") -> str:
-    """Count ntuple candidates passing a selection, overall and per true_mode.
+def query_ntuple(root_file: str, selection: str = "1 == 1",
+                 group_by: str = "") -> str:
+    """Count ntuple candidates passing a selection, optionally broken down
+    by the values of one branch (e.g. a truth label, a lepton flavor,
+    a candidate rank). Call inspect_ntuple first for an unfamiliar file.
 
     Args:
-        root_file: ROOT file name in data/, e.g. "signal_taunu.root".
-        selection: numpy boolean expression over the branch names, e.g.
-            "(abs(m_d0 - 1.8648) < 0.02) & (abs(delta_m - 0.14543) < 0.0025)".
-            Available branches: m2miss, m2miss_roe, e_tag_cm, m_tag, n_roe,
-            q_roe, plep_star, q2, m_d0, delta_m, cos_by, r2, p_lep_lab,
-            costh_lep_lab, p_dst_lab, m2miss_true, plep_star_true, q2_true,
-            true_mode (1 = D* tau nu, 2 = D* l nu, 0 = other B, 3 = continuum),
-            lep_true_pid (true PDG id of the lepton candidate),
-            lep_flavor (reconstructed: 11 = e, 13 = mu), mode_id, event.
-            Ntuples from make_ntuple_exclusive.py instead carry: m2miss,
-            plep_star, q2, m_visible, mbc, delta_e, m_ll, r2, e_tag_cm,
-            m_tag, n_roe, q_roe, n_tracks, n_photons, n_mu, lep_flavor,
-            mode_id, event (no true_mode; identify samples by mode_id or
-            by file). Combinatorial background ntuples (comb_*.root, from
-            make_ntuple_combinatorial.py / generate_continuum_exclusive.py:
-            every K pi l+ l- combination in generic BBbar or continuum,
-            loose windows |m(Kpi)-0.896|<0.25, mbc>5.20, |delta_e|<0.40)
-            carry the same branches plus ll_true_src (1 if both leptons
-            come from the same true J/psi or psi(2S), else 0).
+        root_file: ROOT file under data/ (subdirectories allowed), e.g.
+            "signal_taunu.root" or "kekcc/B0_Kstll_neutral_mu_ntuple_1.root".
+        selection: numpy boolean expression over branch names, e.g.
+            "(abs(m_d0 - 1.8648) < 0.02) & (Mbc > 5.27)". Functions
+            available: abs, log, sqrt. "1 == 1" selects everything.
+            This framework's own ntuples carry: m2miss, e_tag_cm, m_tag,
+            q2, m_d0, delta_m, r2, plep_star, true_mode (1 = D* tau nu,
+            2 = D* l nu, 0 = other B, 3 = continuum), lep_true_pid,
+            lep_flavor (11 = e, 13 = mu), mode_id; exclusive ones add
+            m_visible, mbc, delta_e, m_ll; combinatorial ones add
+            ll_true_src. Official basf2 ntuples use their own names
+            (Mbc, deltaE, isSignal, mcErrors, B_rank, __event__, ...).
+        group_by: optional branch name; the count is then also reported
+            per value of that branch (up to 12 most frequent values).
+            For this framework's ntuples true_mode is used when present.
     """
-    t = _load(root_file)
+    t = _load_for(root_file, selection, group_by or "",
+                  "true_mode" if "true_mode" in _branches(root_file) else "")
     mask = _apply_cut(t, selection)
     parts = [f"total: {len(mask)}", f"pass: {int(mask.sum())}"]
-    if "true_mode" in t:
-        for mode, label in [(1, "true D*taunu"), (2, "true D*lnu"),
-                            (0, "true other B"), (3, "continuum")]:
-            n = int((mask & (t["true_mode"] == mode)).sum())
-            if n:
-                parts.append(f"{label}: {n}")
+    key = group_by or ("true_mode" if "true_mode" in t else "")
+    if key and key in t:
+        vals = t[key][mask]
+        vals = vals[~np.isnan(vals)] if vals.dtype.kind == "f" else vals
+        labels = ({1: "true D*taunu", 2: "true D*lnu", 0: "true other B",
+                   3: "continuum"} if key == "true_mode" else {})
+        u, c = np.unique(vals, return_counts=True)
+        order = np.argsort(-c)[:12]
+        for i in order:
+            v = u[i]
+            name = labels.get(int(v), f"{key}={v:g}" if isinstance(v, float) else f"{key}={v}")
+            parts.append(f"{name}: {int(c[i])}")
     return ", ".join(parts)
 
 
 @beta_tool
+def list_samples(pattern: str = "") -> str:
+    """List the ntuple files available under data/ (recursively), grouped
+    by sample: files that differ only by a trailing _N index are reported
+    as one group with the file count and total entries. Use this first
+    when you did not produce the ntuples yourself.
+
+    Args:
+        pattern: optional substring filter on the path, e.g. "kekcc".
+    """
+    groups: dict = {}
+    found = []
+    for dirpath, _dirs, files in os.walk(DATA_DIR, followlinks=True):
+        found += [Path(dirpath) / f for f in files if f.endswith(".root")]
+    for path in sorted(found):
+        rel = str(path.relative_to(DATA_DIR))
+        if pattern and pattern not in rel:
+            continue
+        stem = re.sub(r"_\d+\.root$", ".root", rel)
+        try:
+            n = _tree(rel).num_entries
+        except Exception as exc:  # unreadable file: still list it
+            n = -1
+        g = groups.setdefault(stem, [0, 0, []])
+        g[0] += 1
+        g[1] += max(n, 0)
+        g[2].append(rel)
+    if not groups:
+        return "no ntuples found"
+    lines = ["sample group (files) : total entries : example file"]
+    for stem, (nf, ne, files) in groups.items():
+        lines.append(f"{stem} ({nf}) : {ne} : {files[0]}")
+    return "\n".join(lines)
+
+
+@beta_tool
+def inspect_ntuple(root_file: str, pattern: str = "",
+                   max_branches: int = 80) -> str:
+    """Describe an ntuple you did not produce: its tree, entries, candidates
+    per event, and branch names (filtered by a substring). Call this
+    before writing selections for an unfamiliar file.
+
+    Args:
+        root_file: ROOT file under data/ (subdirectories allowed).
+        pattern: optional substring to filter branch names, e.g. "Mbc",
+            "mc", "ID", "roe".
+        max_branches: cap on the number of branch names returned.
+    """
+    tree = _tree(root_file)
+    names = _branches(root_file)
+    sel = [n for n in names if pattern in n] if pattern else names
+    lines = [f"tree '{_tree_name(root_file)}': {tree.num_entries} entries, "
+             f"{len(names)} branches"]
+    ev_keys = [k for k in ("__event__", "event") if k in names]
+    if ev_keys and tree.num_entries:
+        cols = [ev_keys[0]] + (["__run__"] if "__run__" in names else [])
+        a = _load(root_file, cols)
+        ev = a[ev_keys[0]].astype(np.int64)
+        if "__run__" in a:
+            ev = ev + a["__run__"].astype(np.int64) * 10**7
+        n_ev = len(np.unique(ev))
+        lines.append(f"unique events: {n_ev} -> {tree.num_entries / max(n_ev, 1):.2f} "
+                     f"candidates per event on average")
+    lines.append(f"branches{' matching ' + repr(pattern) if pattern else ''} "
+                 f"({len(sel)}{', first ' + str(max_branches) if len(sel) > max_branches else ''}):")
+    lines.append(", ".join(sel[:max_branches]))
+    return "\n".join(lines)
+
+
+@beta_tool
 def plot_variable(root_files: list[str], variable: str, output_name: str,
-                  selection: str = "m2miss > -999",
+                  selection: str = "1 == 1",
                   selections: list[str] | None = None,
                   labels: list[str] | None = None,
                   x_min: float = 0.0, x_max: float = 10.0, n_bins: int = 50) -> str:
@@ -210,8 +363,8 @@ def plot_variable(root_files: list[str], variable: str, output_name: str,
     bins = np.linspace(x_min, x_max, n_bins + 1)
     fig, ax = plt.subplots(figsize=(6.4, 4.4))
     for i, rf in enumerate(root_files):
-        t = _load(rf)
         cut = selections[i] if selections is not None else selection
+        t = _load_for(rf, cut, variable)
         mask = _apply_cut(t, cut)
         label = labels[i] if labels is not None else rf.replace(".root", "")
         ax.hist(t[variable][mask], bins=bins, histtype="step", lw=2,
@@ -229,14 +382,15 @@ def plot_variable(root_files: list[str], variable: str, output_name: str,
 @beta_tool
 def scan_cut(signal_file: str, background_files: list[str], variable: str,
              thresholds: list[float], direction: str = ">",
-             base_selection: str = "m2miss > -999") -> str:
+             base_selection: str = "1 == 1") -> str:
     """Scan a one-dimensional cut and report S, B and S/sqrt(S+B) at each
     threshold, so the best working point can be chosen (cut & count policy:
     optimize one variable at a time on top of a fixed base selection).
 
     Args:
-        signal_file: ROOT file in data/ treated as signal (S).
-        background_files: ROOT files in data/ treated as background (B).
+        signal_file: ROOT file under data/ treated as signal (S).
+        background_files: ROOT files under data/ treated as background (B);
+            several files of one sample are simply summed.
         variable: branch name to cut on, e.g. "m2miss".
         thresholds: cut values to test, e.g. [0.5, 1.0, 1.5, 2.0].
         direction: ">" keeps variable > threshold, "<" keeps variable < threshold.
@@ -244,8 +398,8 @@ def scan_cut(signal_file: str, background_files: list[str], variable: str,
     """
     if direction not in (">", "<"):
         return 'error: direction must be ">" or "<"'
-    sig = _load(signal_file)
-    bkgs = [_load(b) for b in background_files]
+    sig = _load_for(signal_file, base_selection, variable)
+    bkgs = [_load_for(b, base_selection, variable) for b in background_files]
     sig_base = _apply_cut(sig, base_selection)
     bkg_base = [_apply_cut(b, base_selection) for b in bkgs]
     lines = [f"threshold  S  B  S/sqrt(S+B)   (base: {base_selection})"]
@@ -322,16 +476,20 @@ BRANCH_LABELS = {
 
 @beta_tool
 def plot_stacked(root_files: list[str], weights: list[float], variable: str,
-                 output_name: str, selection: str = "m2miss > -999",
+                 output_name: str, selection: str = "1 == 1",
                  x_min: float = 0.0, x_max: float = 10.0, n_bins: int = 40,
                  cut_lines: list[float] | None = None,
                  sample_labels: list[str] | None = None,
-                 x_label: str = "", log_y: bool = False) -> str:
-    """Publication-style stacked histogram of one variable, split by the
-    true origin of each candidate (true_mode x lepton truth), with optional
-    vertical cut lines. Use this for the note figures: preselection windows,
-    discriminating variables, control regions. When the ntuples carry no
-    true_mode branch, the stack is one component per input file instead.
+                 x_label: str = "", log_y: bool = False,
+                 split_by: str = "",
+                 split_labels: list[str] | None = None) -> str:
+    """Publication-style stacked histogram of one variable with optional
+    vertical cut lines. Use this for the note figures: preselection
+    windows, discriminating variables, control regions. The stack is
+    split, in order of preference: by the values of `split_by` (any
+    branch, e.g. isSignal or a truth code); else by this framework's
+    true_mode x lepton truth when present; else one component per input
+    sample (files sharing a sample_label are merged).
 
     Args:
         root_files: ntuple files in data/ forming the dataset.
@@ -350,6 +508,10 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
             physics label with units automatically.
         log_y: log y scale — use it whenever components differ by orders
             of magnitude, so the small ones stay visible.
+        split_by: optional branch name to split the stack by its values
+            (e.g. "isSignal"); values are pooled across all files.
+        split_labels: optional legend labels for split_by values, as
+            "value=label" strings, e.g. ["1=signal", "0=background"].
     """
     import matplotlib
     matplotlib.use("Agg")
@@ -363,15 +525,40 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
              3: (r"continuum $q\bar q$", "#c9a227"),
              None: ("fake lepton", "#8d6e63"),
              1: (r"signal", "crimson")}
-    file_colors = ["#bdbdbd", "#64b5f6", "#c9a227", "#8d6e63", "crimson"]
+    file_colors = ["#bdbdbd", "#64b5f6", "#c9a227", "#8d6e63", "crimson",
+                   "#7e57c2", "#26a69a", "#ef6c00"]
     bins = np.linspace(x_min, x_max, n_bins + 1)
     vals, ws, labs, cols = [], [], [], []
-    have_truth = all("true_mode" in _load(rf) for rf in root_files)
-    if have_truth:
+    have_truth = (not split_by) and all("true_mode" in _branches(rf)
+                                        for rf in root_files)
+    if split_by:
+        lab_map = {}
+        for item in (split_labels or []):
+            k, _, v = item.partition("=")
+            lab_map[float(k)] = v
+        pooled: dict = {}
+        for rf, wt in zip(root_files, weights):
+            t = _load_for(rf, selection, variable, split_by)
+            m = _apply_cut(t, selection)
+            keyv = t[split_by][m]
+            for val in np.unique(keyv[~np.isnan(keyv)] if keyv.dtype.kind == "f" else keyv):
+                sel = m.copy()
+                sel[m] = keyv == val
+                g = pooled.setdefault(float(val), [0.0, [], []])
+                g[0] += float(sel.sum() * wt)
+                g[1].append(t[variable][sel])
+                g[2].append(np.full(int(sel.sum()), wt))
+        ordered = sorted(pooled.items(), reverse=True, key=lambda kv: kv[1][0])
+        for i, (val, (_, v, w)) in enumerate(ordered[:8]):
+            vals.append(np.concatenate(v))
+            ws.append(np.concatenate(w))
+            labs.append(lab_map.get(val, f"{split_by} = {val:g}"))
+            cols.append(file_colors[i % len(file_colors)])
+    elif have_truth:
         for mode, (lab, col) in comps.items():
             v, w = [], []
             for rf, wt in zip(root_files, weights):
-                t = _load(rf)
+                t = _load_for(rf, selection, variable, "true_mode", "lep_true_pid")
                 m = _apply_cut(t, selection)
                 lep_ok = np.isin(np.abs(t.get("lep_true_pid",
                                               t["true_mode"] * 0 + 13)),
@@ -393,7 +580,7 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
         # yield at the bottom, labeled by the file name
         groups = {}  # label -> [yield, values, weights] (files merged)
         for i, (rf, wt) in enumerate(zip(root_files, weights)):
-            t = _load(rf)
+            t = _load_for(rf, selection, variable)
             m = _apply_cut(t, selection)
             lab = sample_labels[i] if sample_labels else Path(rf).stem
             g = groups.setdefault(lab, [0.0, [], []])
@@ -430,12 +617,13 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
 @beta_tool
 def fit_templates(data_files: list[str], weights: list[float], variable: str,
                   signal_selection: str, output_name: str,
-                  selection: str = "m2miss > -999",
+                  selection: str = "1 == 1",
                   x_min: float = -2.0, x_max: float = 10.0, n_bins: int = 24,
                   split_by_flavor: bool = True,
                   bkg_syst: float = 0.10,
                   lumi_projection: bool = False,
-                  dataset_lumi_invab: float = 0.000906) -> str:
+                  dataset_lumi_invab: float = 0.000906,
+                  channels: list[str] | None = None) -> str:
     """Generic binned maximum-likelihood template fit (pyhf + MINUIT) of
     mu x S + B in one variable. S is the truth-labeled signal component of
     the dataset (signal_selection), B is everything else; per-bin background
@@ -459,7 +647,14 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
         x_min: histogram lower edge.
         x_max: histogram upper edge.
         n_bins: number of bins.
-        split_by_flavor: simultaneous e/mu channels sharing mu.
+        split_by_flavor: simultaneous e/mu channels sharing mu, using
+            the lep_flavor branch of this framework's ntuples (ignored
+            when the files have no such branch).
+        channels: generic alternative: a list of "name=selection"
+            strings defining the simultaneous channels, e.g.
+            ["e=e1_B0_E > 0", "mu=mu1_B0_E > 0"] or
+            ["ee=lep_flavor == 11", "mumu=lep_flavor == 13"]; each file
+            contributes to a channel only where the branches exist.
         bkg_syst: relative background normalization uncertainty per bin.
         lumi_projection: also compute the statistical-only Asimov expected
             precision at 0.1, 0.36, 1, 5 and 50 ab^-1 (background shapes
@@ -475,14 +670,18 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
     bins = np.linspace(x_min, x_max, n_bins + 1)
     floor = 1e-3
 
-    def build(flavor):
+    def build(chan_sel):
         S = np.zeros(n_bins); B = np.zeros(n_bins)
         Bv = np.zeros(n_bins); D = np.zeros(n_bins)
         for rf, wt in zip(data_files, weights):
-            t = _load(rf)
+            if chan_sel:
+                needed = set(_known_free_symbols([chan_sel]))
+                if not needed <= set(_branches(rf)):
+                    continue  # this file has no such channel
+            t = _load_for(rf, selection, signal_selection, variable, chan_sel or "")
             m = _apply_cut(t, selection)
-            if flavor is not None:
-                m = m & (t["lep_flavor"] == flavor)
+            if chan_sel:
+                m = m & _apply_cut(t, chan_sel)
             is_sig = m & _apply_cut(t, signal_selection)
             S += wt * np.histogram(t[variable][is_sig], bins=bins)[0]
             hb = np.histogram(t[variable][m & ~is_sig], bins=bins)[0]
@@ -502,8 +701,15 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
                "data": unc.tolist()}]}]}
 
     pyhf.set_backend("numpy", "minuit")
-    flavors = [(11, "e"), (13, "mu")] if split_by_flavor else [(None, "all")]
-    parts = {n: build(f) for f, n in flavors}
+    if channels:
+        chans = [(c.partition("=")[2].strip(), c.partition("=")[0].strip())
+                 for c in channels]
+    elif split_by_flavor and all("lep_flavor" in _branches(rf)
+                                 for rf in data_files):
+        chans = [("lep_flavor == 11", "e"), ("lep_flavor == 13", "mu")]
+    else:
+        chans = [(None, "all")]
+    parts = {n: build(f) for f, n in chans}
     model = pyhf.Model({"channels": [spec(n, S, B, u)
                                      for n, (S, B, u, D) in parts.items()]},
                        poi_name="mu")
@@ -607,7 +813,8 @@ def save_note_latex(name: str, content: str) -> str:
     return f"wrote notes/{out.name} and compiled notes/{out.stem}.pdf"
 
 
-ANALYSIS_TOOLS = [read_references, list_decay_modes, generate_mc,
+ANALYSIS_TOOLS = [read_references, list_samples, inspect_ntuple,
+                  list_decay_modes, generate_mc,
                   generate_continuum, make_ntuple, query_ntuple,
                   plot_variable, plot_stacked, scan_cut, fit_templates,
                   read_note, save_note, save_note_latex]
