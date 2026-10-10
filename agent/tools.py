@@ -453,6 +453,10 @@ def save_note(name: str, content: str) -> str:
     """
     NOTES_DIR.mkdir(exist_ok=True)
     out = NOTES_DIR / _safe_name(name, ".md")
+    # web_search results carry <cite index="..."> markup; it must not leak
+    # into the note (keep the quoted text, drop the tags)
+    content = re.sub(r"\(?<?cite index=\"[^\"]*\">", "", content)
+    content = content.replace("</cite>", "")
     out.write_text(content)
     return f"wrote notes/{out.name} ({len(content)} chars)"
 
