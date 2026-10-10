@@ -39,8 +39,10 @@ The approval gate between Plan and Execute has two modes
 | File | Role |
 |---|---|
 | `runner.py` | agent loop (Anthropic tool runner), system prompt with the Plan→Execute→Report contract and the analysis policy |
-| `tools.py` | typed tools: `list_decay_modes`, `generate_mc`, `make_ntuple`, `query_ntuple`, `plot_variable` |
+| `tools.py` | typed tools: generation (`list_decay_modes`, `generate_mc`, `generate_continuum`, `make_ntuple`), ntuples (`list_branches`, `query_ntuple`, `plot_variable`, `plot_stacked`, `scan_cut`, `fit_templates`), systematics (`apply_systematics`), notes |
 | `__main__.py` | CLI entry point |
+| `../systematics/*.json` | published systematic-uncertainty tables read by `apply_systematics` (e.g. Belle II arXiv:2206.05946 Table I) |
+| `../tests/test_offline.py` | offline tests, no API calls: `python tests/test_offline.py` |
 
 Design choices worth knowing:
 
@@ -49,8 +51,25 @@ Design choices worth knowing:
   cannot skip it because the system prompt forbids running other tools
   first, and the student's rejection text is fed back as the tool result.
 - Tool file access is confined to `generation/dec/`, `data/`, `plots/`.
+  Ntuples may sit in plain subdirectories of `data/`
+  (e.g. `data/kekcc/` for the Belle II full-MC samples copied from KEKCC).
 - `query_ntuple` / `plot_variable` evaluate cut strings with numpy in a
   restricted namespace.
+- Both ntuple formats are read: the fast-sim tree `events` and the basf2
+  `VariablesToNtuple` tree `ntuple` (basf2 variable names such as `Mbc`,
+  `deltaE`, `B_rank`, `isSignal`; use `list_branches` to see them).
+- Only text crosses the network: the task, the tool definitions and the
+  short strings the tools return. Plot tools return a file path, never an
+  image; ntuples never leave the machine.
+- Cost: the agent loop uses **prompt caching**, so the system prompt, tool
+  definitions and history resent each turn are billed as cache reads. The
+  end-of-run `[usage]` line counts agent turns *and* reviewer calls,
+  including cache writes and reads and web searches, at list prices.
+- Systematics: `apply_systematics` attaches the published table's entries
+  (PID, K_S, pi0, tracking, N_BB, ...) to a result. Entries marked
+  `mc_evaluable` (MC statistics, cross feed, PDF shape) can be replaced by
+  values the agent evaluates itself. Entries marked `placeholder` (the
+  published MVA selection) are flagged in the output.
 
 ## Student roadmap (hardening the skeleton)
 

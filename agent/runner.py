@@ -13,6 +13,59 @@ from .tools import ANALYSIS_TOOLS, NOTES_DIR, _safe_name
 
 MODEL = "claude-sonnet-5"
 
+# List prices in USD per million tokens: (input, output, cache read).
+# Cache writes (5-minute TTL) cost 1.25x input; web search is $10 per 1k.
+PRICES = {
+    "claude-fable-5-1": (10, 50, 0.25),
+    "claude-opus-5-5": (4, 20, 0.20),
+    "claude-opus-5": (5, 25, 0.50),
+    "claude-sonnet-5-5": (2, 10, 0.20),
+    "claude-sonnet-5": (2, 10, 0.20),
+    "claude-haiku-4-5": (1, 5, 0.10),
+}
+WEB_SEARCH_USD = 0.01
+
+
+class Usage:
+    """Token and cost accounting for one run: agent turns AND reviewer
+    calls, including prompt-cache writes and reads, priced per model."""
+
+    def __init__(self) -> None:
+        self.by_model: dict[str, dict[str, int]] = {}
+
+    def add(self, model: str, u) -> None:
+        if u is None:
+            return
+        d = self.by_model.setdefault(
+            model, {"calls": 0, "inp": 0, "out": 0, "cw": 0, "cr": 0,
+                    "web": 0})
+        d["calls"] += 1
+        d["inp"] += u.input_tokens or 0
+        d["out"] += u.output_tokens or 0
+        d["cw"] += getattr(u, "cache_creation_input_tokens", 0) or 0
+        d["cr"] += getattr(u, "cache_read_input_tokens", 0) or 0
+        stu = getattr(u, "server_tool_use", None)
+        d["web"] += (getattr(stu, "web_search_requests", 0) or 0) if stu else 0
+
+    def cost(self) -> float:
+        total = 0.0
+        for model, d in self.by_model.items():
+            pin, pout, pcr = PRICES.get(model, (5, 25, 0.50))
+            total += (d["inp"] * pin + d["cw"] * 1.25 * pin
+                      + d["cr"] * pcr + d["out"] * pout) / 1e6
+            total += d["web"] * WEB_SEARCH_USD
+        return total
+
+    def report(self, turns: int) -> str:
+        lines = [f"[usage] {turns} agent turns, ~${self.cost():.2f} at list "
+                 "prices (agent + reviewer calls, cache included)"]
+        for model, d in self.by_model.items():
+            lines.append(
+                f"  {model}: {d['calls']} calls; tokens in {d['inp']:,}, "
+                f"cache write {d['cw']:,}, cache read {d['cr']:,}, "
+                f"out {d['out']:,}; {d['web']} web searches")
+        return "\n".join(lines)
+
 SYSTEM_PROMPT = """\
 You are a physics-analysis agent for a Belle II-like sensitivity-study
 framework (EvtGen generation -> fast detector simulation -> ROOT ntuples).
@@ -90,7 +143,8 @@ VERDICT: exactly one final line, either "APPROVE" or
 """
 
 
-def make_approval_tool(review: str, client, model: str):
+def make_approval_tool(review: str, client, model: str,
+                       usage: Usage | None = None):
     """Build the approval gate for the chosen review mode.
 
     'human' (default): the student answers y/N on the terminal.
@@ -98,6 +152,7 @@ def make_approval_tool(review: str, client, model: str):
             use once the workflow is established and trusted.
     """
     state = {"revisions": 0}
+    usage = usage or Usage()
 
     @beta_tool
     def request_approval(plan: str) -> str:
@@ -112,6 +167,7 @@ def make_approval_tool(review: str, client, model: str):
             verdict = client.messages.create(
                 model=model, max_tokens=8192, system=REVIEWER_PROMPT,
                 messages=[{"role": "user", "content": plan}])
+            usage.add(getattr(verdict, "model", model), verdict.usage)
             text = "".join(b.text for b in verdict.content
                            if b.type == "text").strip()
             if not text:  # e.g. the reviewer spent the budget thinking
@@ -161,9 +217,11 @@ VERDICT: one final line, "APPROVE" or "REVISE: <actionable feedback>".
 """
 
 
-def make_note_tool(review: str, client, model: str):
+def make_note_tool(review: str, client, model: str,
+                   usage: Usage | None = None):
     """save_note, with an AI referee in front of it when review == 'ai'."""
     state = {"revisions": 0}
+    usage = usage or Usage()
 
     @beta_tool
     def save_note(name: str, content: str) -> str:
@@ -180,6 +238,7 @@ def make_note_tool(review: str, client, model: str):
             verdict = client.messages.create(
                 model=model, max_tokens=8192, system=NOTE_REVIEWER_PROMPT,
                 messages=[{"role": "user", "content": content}])
+            usage.add(getattr(verdict, "model", model), verdict.usage)
             text = "".join(b.text for b in verdict.content
                            if b.type == "text").strip()
             if not text:
@@ -215,11 +274,6 @@ WEB_SEARCH_TOOL = {
     "max_uses": 8,
 }
 
-# USD per million tokens (input, output) — for the end-of-run cost report
-PRICES = {"claude-opus-5": (5, 25), "claude-sonnet-5": (2, 10),
-          "claude-haiku-4-5": (1, 5)}
-
-
 def dry_run(task: str) -> None:
     """Exercise the tool plumbing WITHOUT any API call (no cost): runs a
     canned mini-sequence (read_references -> list_decay_modes ->
@@ -249,61 +303,65 @@ def run(task: str, model: str = MODEL, max_turns: int = 60,
     with the paused turn appended (the pattern from the SDK docs).
     """
     client = anthropic.Anthropic()
-    approval = make_approval_tool(review, client, model)
-    note_tool = make_note_tool(review, client, model)
+    usage = Usage()
+    approval = make_approval_tool(review, client, model, usage)
+    note_tool = make_note_tool(review, client, model, usage)
     analysis_tools = [t for t in ANALYSIS_TOOLS if t.name != "save_note"]
     tools = [approval, note_tool, WEB_SEARCH_TOOL, *analysis_tools]
 
     messages = [{"role": "user", "content": task}]
     turns = 0
     restarts = 0
-    tok_in = tok_out = 0
-    while True:
-        runner = client.beta.messages.tool_runner(
-            model=model,
-            max_tokens=32000,
-            stream=True,  # >10-min requests require streaming (SDK guard)
-            system=SYSTEM_PROMPT,
-            tools=tools,
-            messages=messages,
-            # Server-side fallback: a safety-classifier decline is retried
-            # on a fallback model instead of failing outright.
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",
-        )
-        last = None
-        for item in runner:
-            # with stream=True the runner yields message streams; the
-            # loop body only needs the final message of each turn
-            message = item.get_final_message() if hasattr(
-                item, "get_final_message") else item
-            last = message
-            turns += 1
-            if message.usage:
-                tok_in += message.usage.input_tokens
-                tok_out += message.usage.output_tokens
-            for block in message.content:
-                if block.type == "text" and block.text.strip():
-                    print(block.text)
-                elif block.type == "tool_use":
-                    print(f"[tool] {block.name}({block.input})")
-                elif block.type == "server_tool_use":
-                    print(f"[web] {block.name}({block.input})")
-            # mirror the history: the runner keeps its own copy internally
-            messages.append({"role": "assistant", "content": message.content})
-            tool_response = runner.generate_tool_call_response()
-            if tool_response is not None:
-                messages.append(tool_response)
-            if turns >= max_turns:
-                print("!! max_turns reached — stopping the agent loop")
-                return
-        if last is None or last.stop_reason != "pause_turn":
-            break
-        restarts += 1
-        if restarts > 5:
-            print("!! giving up: turn still paused after 5 restarts")
-            break
-    pin, pout = PRICES.get(model, (5, 25))
-    cost = tok_in / 1e6 * pin + tok_out / 1e6 * pout
-    print(f"[usage] {turns} API turns, {tok_in:,} in / {tok_out:,} out "
-          f"tokens ~= ${cost:.2f} ({model}; reviewer calls excluded)")
+    try:
+        while True:
+            runner = client.beta.messages.tool_runner(
+                model=model,
+                max_tokens=32000,
+                stream=True,  # >10-min requests require streaming (SDK guard)
+                system=SYSTEM_PROMPT,
+                tools=tools,
+                messages=messages,
+                # Prompt caching: every turn resends the system prompt, the
+                # tool definitions and the whole history. Automatic caching
+                # bills the repeated prefix as cheap cache reads instead of
+                # full-price input.
+                cache_control={"type": "ephemeral"},
+                # Server-side fallback: a safety-classifier decline is
+                # retried on a fallback model instead of failing outright.
+                betas=["server-side-fallback-2026-07-01"],
+                fallbacks="default",
+            )
+            last = None
+            for item in runner:
+                # with stream=True the runner yields message streams; the
+                # loop body only needs the final message of each turn
+                message = item.get_final_message() if hasattr(
+                    item, "get_final_message") else item
+                last = message
+                turns += 1
+                usage.add(getattr(message, "model", model), message.usage)
+                for block in message.content:
+                    if block.type == "text" and block.text.strip():
+                        print(block.text)
+                    elif block.type == "tool_use":
+                        print(f"[tool] {block.name}({block.input})")
+                    elif block.type == "server_tool_use":
+                        print(f"[web] {block.name}({block.input})")
+                # mirror the history: the runner keeps its own copy
+                messages.append({"role": "assistant",
+                                 "content": message.content})
+                tool_response = runner.generate_tool_call_response()
+                if tool_response is not None:
+                    messages.append(tool_response)
+                if turns >= max_turns:
+                    print("!! max_turns reached — stopping the agent loop")
+                    return
+            if last is None or last.stop_reason != "pause_turn":
+                break
+            restarts += 1
+            if restarts > 5:
+                print("!! giving up: turn still paused after 5 restarts")
+                break
+    finally:
+        # reported on every exit path, including max_turns and errors
+        print(usage.report(turns))
