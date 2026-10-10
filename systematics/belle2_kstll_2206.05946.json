@@ -1,0 +1,38 @@
+{
+  "citation": "Belle II, arXiv:2206.05946 (BELLE2-CONF-PH-2022-009), Sec. 6 and Table I",
+  "description": "Relative systematic uncertainties (%) for B -> K*(892) l+ l- with 189 fb^-1, transcribed from Table I. Physics-object (PID, K_S, pi0, tracking) and global entries are used as published. Entries marked mc_evaluable may be replaced by values evaluated on MC in this framework; until then the published value is used. Entries marked placeholder belong to a selection that differs from ours (the published MVA).",
+  "notes": [
+    "Where Table I quotes a range, the upper end is used.",
+    "Tracking follows the stated rule (0.3% per final-state charged particle, added linearly). This gives 1.2% (4 tracks) and 1.5% (5 tracks, K_S daughters included), matching Table I's 1.2-1.5%. For K+ pi0 l+ l- (3 tracks) the rule gives 0.9%, below the quoted range; the rule is followed here.",
+    "Table I has no separate background entry; background enters via the fit (statistical) and via the MVA-selection and PDF-shape entries."
+  ],
+  "sources": {
+    "kaon_id":     {"label": "Kaon identification",          "up": 0.4},
+    "pion_id":     {"label": "Pion identification",          "up": 2.5},
+    "muon_id":     {"label": "Muon identification",          "up": 1.9, "down": 0.8},
+    "electron_id": {"label": "Electron identification",      "up": 0.9, "down": 0.5},
+    "ks_id":       {"label": "K_S identification",           "up": 2.0},
+    "pi0_id":      {"label": "pi0 identification",           "up": 3.4},
+    "tracking":    {"label": "Tracking",                     "per_track": 0.3},
+    "mva":         {"label": "MVA selection",                "up": 1.7, "placeholder": true},
+    "mc_size":     {"label": "Simulated sample size",        "up": 0.5, "mc_evaluable": true},
+    "cross_feed":  {"label": "Signal cross feed",            "up": 1.0, "mc_evaluable": true},
+    "pdf_shape":   {"label": "Signal PDF shape",             "up": 1.0, "mc_evaluable": true},
+    "ups_bf":      {"label": "B(Y(4S) -> B+B-) / B(Y(4S) -> B0B0bar)", "up": 1.2},
+    "n_bb":        {"label": "Number of BBbar pairs",        "up": 2.9}
+  },
+  "modes": {
+    "B0_Kst0_Kpi_mumu":   {"description": "B0 -> K*0(K+ pi-) mu+ mu-",   "n_tracks": 4,
+                           "sources": ["kaon_id", "pion_id", "muon_id", "tracking", "mva", "mc_size", "cross_feed", "pdf_shape", "ups_bf", "n_bb"]},
+    "B0_Kst0_Kpi_ee":     {"description": "B0 -> K*0(K+ pi-) e+ e-",     "n_tracks": 4,
+                           "sources": ["kaon_id", "pion_id", "electron_id", "tracking", "mva", "mc_size", "cross_feed", "pdf_shape", "ups_bf", "n_bb"]},
+    "Bp_Kstp_Kpi0_mumu":  {"description": "B+ -> K*+(K+ pi0) mu+ mu-",  "n_tracks": 3,
+                           "sources": ["kaon_id", "pi0_id", "muon_id", "tracking", "mva", "mc_size", "cross_feed", "pdf_shape", "ups_bf", "n_bb"]},
+    "Bp_Kstp_Kpi0_ee":    {"description": "B+ -> K*+(K+ pi0) e+ e-",    "n_tracks": 3,
+                           "sources": ["kaon_id", "pi0_id", "electron_id", "tracking", "mva", "mc_size", "cross_feed", "pdf_shape", "ups_bf", "n_bb"]},
+    "Bp_Kstp_KSpi_mumu":  {"description": "B+ -> K*+(K_S pi+) mu+ mu-", "n_tracks": 5,
+                           "sources": ["pion_id", "ks_id", "muon_id", "tracking", "mva", "mc_size", "cross_feed", "pdf_shape", "ups_bf", "n_bb"]},
+    "Bp_Kstp_KSpi_ee":    {"description": "B+ -> K*+(K_S pi+) e+ e-",   "n_tracks": 5,
+                           "sources": ["pion_id", "ks_id", "electron_id", "tracking", "mva", "mc_size", "cross_feed", "pdf_shape", "ups_bf", "n_bb"]}
+  }
+}
