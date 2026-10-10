@@ -5,7 +5,8 @@ fast sim + ntuple production, ntuple queries and plots). The @beta_tool
 decorator turns the signature + docstring into a tool schema automatically.
 
 All paths are confined to the repository (dec files under generation/dec/,
-outputs under data/ and plots/), so the agent cannot touch anything else.
+ntuples and outputs under data/ and plots/, read-only systematics tables
+under systematics/), so the agent cannot touch anything else.
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ DEC_DIR = REPO / "generation" / "dec"
 DATA_DIR = REPO / "data"
 PLOT_DIR = REPO / "plots"
 NOTES_DIR = REPO / "notes"
+SYST_DIR = REPO / "systematics"
 GENERATE_BIN = REPO / "generation" / "bin" / "generate"
 MAX_EVENTS = 2_000_000
 
@@ -120,10 +122,39 @@ def generate_continuum(n_events: int, output_name: str, seed: int) -> str:
     return "\n".join(proc.stdout.strip().splitlines()[-2:])
 
 
-def _load(root_file: str, columns=None):
+# Tree names tried in order: "events" (fast-sim ntuples of this repo) and
+# "ntuple" (Belle II full-MC ntuples written by basf2 VariablesToNtuple in
+# ntupleProduction/). A file with exactly one other TTree is also accepted.
+TREE_NAMES = ("events", "ntuple")
+
+
+def _data_path(root_file: str) -> Path:
+    """Resolve a ROOT file under data/, allowing plain subdirectories
+    (e.g. "kekcc/B0_Kstll_neutral_mu_ntuple_1.root") but nothing that can
+    leave data/ ("..", absolute paths, odd characters)."""
+    parts = root_file.split("/")
+    if (not root_file.endswith(".root")
+            or any(p in ("", ".", "..") or not _NAME_RE.match(p)
+                   for p in parts)):
+        raise ValueError(f"invalid ROOT file name {root_file!r} "
+                         "(expected a .root file under data/)")
+    return DATA_DIR.joinpath(*parts)
+
+
+def _tree(root_file: str):
     import uproot
-    path = DATA_DIR / _safe_name(root_file, ".root")
-    return uproot.open(path)["events"].arrays(columns, library="np")
+    f = uproot.open(_data_path(root_file))
+    for name in TREE_NAMES:
+        if name in f:
+            return f[name]
+    trees = [k for k, c in f.classnames().items() if c.startswith("TTree")]
+    if len(trees) == 1:
+        return f[trees[0]]
+    raise ValueError(f"no known tree in {root_file}: found {list(f.keys())}")
+
+
+def _load(root_file: str, columns=None):
+    return _tree(root_file).arrays(columns, library="np")
 
 
 def _apply_cut(arrays: dict, selection: str) -> np.ndarray:
@@ -131,8 +162,12 @@ def _apply_cut(arrays: dict, selection: str) -> np.ndarray:
 
     The namespace contains only the branch arrays plus abs/log/sqrt —
     no builtins — so the agent can express cuts like
-    "(abs(m_d0 - 1.8648) < 0.02) & (m2miss > 1.5)".
+    "(abs(m_d0 - 1.8648) < 0.02) & (m2miss > 1.5)". An empty selection
+    keeps every row.
     """
+    if not selection.strip():
+        n = len(next(iter(arrays.values()))) if arrays else 0
+        return np.ones(n, dtype=bool)
     ns = {"abs": np.abs, "log": np.log, "sqrt": np.sqrt, "__builtins__": {}}
     ns.update(arrays)
     mask = eval(selection, ns)  # noqa: S307 — restricted namespace, local tool
@@ -140,12 +175,36 @@ def _apply_cut(arrays: dict, selection: str) -> np.ndarray:
 
 
 @beta_tool
-def query_ntuple(root_file: str, selection: str = "m2miss > -999") -> str:
+def list_branches(root_file: str, pattern: str = "") -> str:
+    """List the branch names of an ntuple (optionally only those containing
+    a substring). Use this before writing selections for an ntuple whose
+    branches you have not seen, e.g. the Belle II full-MC ntuples.
+
+    Args:
+        root_file: ROOT file under data/, e.g.
+            "kekcc/B0_Kstll_neutral_mu_ntuple_1.root".
+        pattern: case-insensitive substring filter, e.g. "PID"; empty
+            lists every branch.
+    """
+    t = _tree(root_file)
+    names = [n for n in t.keys() if pattern.lower() in n.lower()]
+    return (f"{t.num_entries} entries, {len(names)} branches"
+            + (f" matching {pattern!r}" if pattern else "") + ": "
+            + ", ".join(names))
+
+
+@beta_tool
+def query_ntuple(root_file: str, selection: str = "") -> str:
     """Count ntuple candidates passing a selection, overall and per true_mode.
 
     Args:
-        root_file: ROOT file name in data/, e.g. "signal_taunu.root".
-        selection: numpy boolean expression over the branch names, e.g.
+        root_file: ROOT file under data/, e.g. "signal_taunu.root", or in a
+            subdirectory, e.g. "kekcc/B0_Kstll_neutral_mu_ntuple_1.root".
+            Belle II full-MC ntuples (tree "ntuple", from ntupleProduction/)
+            carry basf2 variable names such as Mbc, deltaE, B_rank
+            (1 = best candidate) and isSignal; call list_branches first.
+        selection: numpy boolean expression over the branch names (empty =
+            all rows), e.g.
             "(abs(m_d0 - 1.8648) < 0.02) & (abs(delta_m - 0.14543) < 0.0025)".
             Available branches: m2miss, m2miss_roe, e_tag_cm, m_tag, n_roe,
             q_roe, plep_star, q2, m_d0, delta_m, cos_by, r2, p_lep_lab,
@@ -607,7 +666,85 @@ def save_note_latex(name: str, content: str) -> str:
     return f"wrote notes/{out.name} and compiled notes/{out.stem}.pdf"
 
 
+def _systematics_table(table: str) -> dict:
+    import json
+    return json.loads((SYST_DIR / _safe_name(table, ".json")).read_text())
+
+
+@beta_tool
+def apply_systematics(table: str, mode: str, value: float, stat: float,
+                      evaluated: dict[str, float] | None = None) -> str:
+    """Attach systematic uncertainties to a result, from a published
+    systematics table (systematics/*.json) plus any sources you evaluated
+    yourself on MC. Returns the result with stat and syst uncertainties and
+    a Markdown breakdown table (with the origin of every entry) to put in
+    the note. Sources are combined in quadrature; tracking is 0.3% per
+    charged track added linearly, as in the published analysis.
+
+    Args:
+        table: table file in systematics/, e.g. "belle2_kstll_2206.05946.json".
+        mode: decay-mode key in that table (an unknown key lists the valid ones).
+        value: central value of the result, e.g. a branching fraction.
+        stat: its statistical uncertainty, in the same units.
+        evaluated: optional relative uncertainties in percent that you
+            evaluated yourself on MC, keyed by source id (e.g.
+            {"pdf_shape": 0.7}). Allowed only for sources marked
+            mc_evaluable in the table; they replace the published values.
+    """
+    from math import sqrt
+    data = _systematics_table(table)
+    modes, sources = data["modes"], data["sources"]
+    if mode not in modes:
+        return (f"error: unknown mode {mode!r}; valid modes: "
+                + ", ".join(modes))
+    evaluated = evaluated or {}
+    bad = [k for k in evaluated
+           if not sources.get(k, {}).get("mc_evaluable")]
+    if bad:
+        ok = [k for k, s in sources.items() if s.get("mc_evaluable")]
+        return (f"error: {bad} cannot be replaced by an MC evaluation; "
+                f"mc_evaluable sources are {ok}")
+    m = modes[mode]
+    rows, up2, dn2 = [], 0.0, 0.0
+    for sid in m["sources"]:
+        s = sources[sid]
+        if "per_track" in s:
+            up = dn = s["per_track"] * m["n_tracks"]
+            origin = (f"published ({s['per_track']}% x {m['n_tracks']} "
+                      "tracks, linear)")
+        elif sid in evaluated:
+            up = dn = float(evaluated[sid])
+            origin = "evaluated on MC (this analysis)"
+        else:
+            up, dn = s["up"], s.get("down", s["up"])
+            origin = "published" + (" — placeholder" if s.get("placeholder")
+                                    else "")
+        up2, dn2 = up2 + up * up, dn2 + dn * dn
+        rows.append(f"| {s['label']} | +{up:.2g} | -{dn:.2g} | {origin} |")
+    tot_up, tot_dn = sqrt(up2), sqrt(dn2)
+    lines = [
+        f"{mode}: {value:.4g} ± {stat:.2g} (stat) "
+        f"+{value * tot_up / 100:.2g} -{value * tot_dn / 100:.2g} (syst)",
+        f"total syst: +{tot_up:.2g}% / -{tot_dn:.2g}% "
+        f"(source: {data['citation']})",
+        "",
+        "| Source | + (%) | - (%) | Origin |",
+        "|---|---|---|---|",
+        *rows,
+        f"| **Total** | +{tot_up:.2g} | -{tot_dn:.2g} | quadrature |",
+    ]
+    placeholders = [sources[sid]["label"] for sid in m["sources"]
+                    if sources[sid].get("placeholder") and sid not in evaluated]
+    if placeholders:
+        lines.append("")
+        lines.append("Placeholders (published values for a different "
+                     "selection; state this in the note): "
+                     + ", ".join(placeholders))
+    return "\n".join(lines)
+
+
 ANALYSIS_TOOLS = [read_references, list_decay_modes, generate_mc,
-                  generate_continuum, make_ntuple, query_ntuple,
-                  plot_variable, plot_stacked, scan_cut, fit_templates,
-                  read_note, save_note, save_note_latex]
+                  generate_continuum, make_ntuple, list_branches,
+                  query_ntuple, plot_variable, plot_stacked, scan_cut,
+                  fit_templates, apply_systematics, read_note, save_note,
+                  save_note_latex]
