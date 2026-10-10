@@ -4,6 +4,7 @@ generation/bin/
 *.hepmc
 *.root
 *.parquet
+*.log
 __pycache__/
 .DS_Store
 paper/
