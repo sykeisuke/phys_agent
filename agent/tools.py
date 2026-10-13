@@ -285,7 +285,8 @@ def _best_per_event(t: dict, mask: np.ndarray, best_by: str, key) -> np.ndarray:
 @beta_tool
 def query_ntuple(root_file: str, selection: str = "",
                  group_by: str = "", best_by: str = "",
-                 post_selection: str = "") -> str:
+                 post_selection: str = "",
+                 root_files: list[str] | None = None) -> str:
     """Count ntuple candidates passing a selection, optionally broken down
     by the values of one branch (e.g. a truth label, a lepton flavor,
     a candidate rank). Call inspect_ntuple first for an unfamiliar file.
@@ -315,9 +316,58 @@ def query_ntuple(root_file: str, selection: str = "",
             best-candidate choice (e.g. a signal box "(Mbc > 5.27) &
             (abs(deltaE) < 0.05)", or a truth flag), so the best candidate
             is chosen among all candidates passing `selection` first.
+        root_files: optional list of files (e.g. the 5 copies of one
+            sample) to query together; counts are summed over the files
+            (events are distinct per file). Use this instead of one call
+            per file.
     When the file has an event identifier the result also reports the
     number of distinct EVENTS passing (candidates can repeat per event).
     """
+    files = list(root_files) if root_files else [root_file]
+    total = passed = events = 0
+    have_key = True
+    grouped: dict = {}
+    for rf in files:
+        t = _load_for(rf, selection, group_by or "", best_by or "",
+                      post_selection or "",
+                      "true_mode" if "true_mode" in _branches(rf) else "")
+        mask = _apply_cut(t, selection)
+        key = _event_key(t, rf)
+        mask = _best_per_event(t, mask, best_by, key)
+        if post_selection:
+            mask = mask & _apply_cut(t, post_selection)
+        total += len(mask)
+        passed += int(mask.sum())
+        if key is None:
+            have_key = False
+        else:
+            events += len(np.unique(key[mask]))
+        gkey = group_by or ("true_mode" if "true_mode" in t else "")
+        if gkey and gkey in t:
+            vals = t[gkey][mask]
+            if vals.dtype.kind == "f":
+                n_nan = int(np.isnan(vals).sum())
+                if n_nan:  # report undefined values instead of dropping them
+                    grouped["nan"] = grouped.get("nan", 0) + n_nan
+                vals = vals[~np.isnan(vals)]
+            u, c = np.unique(vals, return_counts=True)
+            for v, n in zip(u, c):
+                grouped[float(v)] = grouped.get(float(v), 0) + int(n)
+    parts = [f"files: {len(files)}"] if len(files) > 1 else []
+    parts += [f"total: {total}", f"pass: {passed}"]
+    if have_key:
+        parts.append(f"events passing: {events}")
+    key = group_by or ("true_mode" if grouped and not group_by else "")
+    if grouped:
+        labels = ({1: "true D*taunu", 2: "true D*lnu", 0: "true other B",
+                   3: "continuum"} if key == "true_mode" else {})
+        for v, n in sorted(grouped.items(), key=lambda kv: -kv[1])[:12]:
+            if v == "nan":
+                parts.append(f"{key}=undefined (NaN): {n}")
+            else:
+                parts.append(f"{labels.get(int(v), f'{key}={v:g}')}: {n}")
+    return ", ".join(parts)
+    # (legacy single-file path below is unreachable)
     t = _load_for(root_file, selection, group_by or "", best_by or "",
                   post_selection or "",
                   "true_mode" if "true_mode" in _branches(root_file) else "")
