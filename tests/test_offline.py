@@ -114,6 +114,13 @@ def test_note_structure_check():
     assert any("Abstract" in p for p in _check_note_structure("## 1 Introduction\n"))
 
 
+def test_runner_note_tool_enforces_template():
+    from agent.runner import make_note_tool
+    tool = make_note_tool("human", client=None, model="x")
+    r = tool.call({"name": "zz_test.md", "content": "## 1 Introduction\nx\n"})
+    assert "REJECTED" in r and "Abstract" in r, r
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

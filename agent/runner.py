@@ -6,10 +6,13 @@ request_approval tool, mirroring the workflow figure in the README.
 """
 from __future__ import annotations
 
+import re
+
 import anthropic
 from anthropic import beta_tool
 
-from .tools import ANALYSIS_TOOLS, NOTES_DIR, _safe_name
+from .tools import (ANALYSIS_TOOLS, NOTES_DIR, _safe_name,
+                    _check_note_structure)
 
 MODEL = "claude-sonnet-5"
 
@@ -268,6 +271,16 @@ def make_note_tool(review: str, client, model: str,
             name: file name, e.g. "dsttaunu_bf_note.md".
             content: the complete note in Markdown.
         """
+        # web_search results carry (cite index="..."> markup; drop the tags
+        content = re.sub(r"\(?<?cite index=\"[^\"]*\">", "", content)
+        content = content.replace("</cite>", "")
+        # mechanical template check first (free; does not count as a
+        # referee revision round)
+        problems = _check_note_structure(content)
+        if problems:
+            return ("note REJECTED — it does not follow docs/note_template.md "
+                    "(call read_note_template): " + "; ".join(problems)
+                    + ". Fix the structure and call save_note again.")
         if review == "ai":
             verdict = client.messages.create(
                 model=model, max_tokens=8192, system=NOTE_REVIEWER_PROMPT,

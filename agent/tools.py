@@ -283,7 +283,7 @@ def _best_per_event(t: dict, mask: np.ndarray, best_by: str, key) -> np.ndarray:
 
 
 @beta_tool
-def query_ntuple(root_file: str, selection: str = "",
+def query_ntuple(root_file: str = "", selection: str = "",
                  group_by: str = "", best_by: str = "",
                  post_selection: str = "",
                  root_files: list[str] | None = None) -> str:
@@ -294,6 +294,7 @@ def query_ntuple(root_file: str, selection: str = "",
     Args:
         root_file: ROOT file under data/ (subdirectories allowed), e.g.
             "signal_taunu.root" or "kekcc/B0_Kstll_neutral_mu_ntuple_1.root".
+            May be omitted when root_files is given.
         selection: numpy boolean expression over branch names, e.g.
             "(abs(m_d0 - 1.8648) < 0.02) & (Mbc > 5.27)". Functions
             available: abs, log, sqrt. An empty selection keeps all rows.
@@ -324,6 +325,8 @@ def query_ntuple(root_file: str, selection: str = "",
     number of distinct EVENTS passing (candidates can repeat per event).
     """
     files = list(root_files) if root_files else [root_file]
+    if not files or not files[0]:
+        return "error: give root_file or a non-empty root_files list"
     total = passed = events = 0
     have_key = True
     grouped: dict = {}
