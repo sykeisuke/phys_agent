@@ -96,6 +96,24 @@ def test_usage_cost_counts_cache_and_reviewer():
     assert "2 calls" in u.report(5)
 
 
+def test_note_structure_check():
+    from agent.tools import _check_note_structure, _NOTE_SECTIONS
+    def note(drop=None, swap=False):
+        titles = [t for _, t in _NOTE_SECTIONS]
+        if swap:
+            titles[7], titles[8] = titles[8], titles[7]
+        out = "## Abstract\nx\n"
+        for t in titles:
+            out += f"## {t}\n\n"
+            out += "text\n\n" if t == drop else "| a |\n|---|\n| 1 |\n\n"
+        return out
+    assert _check_note_structure(note()) == []
+    bad = _check_note_structure(note(drop="3 Event selection and reconstruction"))
+    assert bad and "neither a table nor a figure" in bad[0], bad
+    assert "not in the template order" in _check_note_structure(note(swap=True))[0]
+    assert any("Abstract" in p for p in _check_note_structure("## 1 Introduction\n"))
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

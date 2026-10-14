@@ -570,6 +570,61 @@ def read_references() -> str:
 
 
 @beta_tool
+def read_note_template() -> str:
+    """Read the fixed analysis-note template (section skeleton modelled on
+    a Belle II paper, plus the agent-specific provenance section, and the
+    tables/figures each section must contain). Call this before writing
+    the note; save_note rejects notes that deviate from it."""
+    return (REPO / "docs" / "note_template.md").read_text()
+
+
+_NOTE_SECTIONS = [
+    ("introduction", "1 Introduction"),
+    ("detector", "2 Detector model and samples"),
+    ("selection", "3 Event selection and reconstruction"),
+    ("background", "4 Background estimation and suppression"),
+    ("yield", "5 Signal yield extraction"),
+    ("systematic", "6 Efficiency corrections and systematic uncertainties"),
+    ("results", "7 Results and summary"),
+    ("discussion", "8 Discussion"),
+    ("provenance", "9 Analysis provenance"),
+    ("references", "10 References"),
+]
+_NEEDS_TABLE_OR_FIGURE = {"detector", "selection", "background", "yield",
+                          "systematic", "results"}
+
+
+def _check_note_structure(content: str) -> list:
+    """Problems with the note's structure (empty list = conforms)."""
+    problems = []
+    lines = content.splitlines()
+    heads = [(i, l) for i, l in enumerate(lines) if l.startswith("## ")]
+    if not re.search(r"^##\s*Abstract", content, re.M):
+        problems.append("missing '## Abstract' before section 1")
+    pos = []
+    for key, title in _NOTE_SECTIONS:
+        hit = [i for i, l in heads if key in l.lower()]
+        if not hit:
+            problems.append(f"missing section '## {title}'")
+            pos.append(None)
+        else:
+            pos.append(hit[0])
+    found = [p for p in pos if p is not None]
+    if found != sorted(found):
+        problems.append("sections are not in the template order")
+    for (key, title), start in zip(_NOTE_SECTIONS, pos):
+        if start is None or key not in _NEEDS_TABLE_OR_FIGURE:
+            continue
+        end = min([i for i, _ in heads if i > start] + [len(lines)])
+        body = "\n".join(lines[start:end])
+        has_table = re.search(r"^\|.*\|\s*$", body, re.M) is not None
+        has_fig = "![" in body
+        if not (has_table or has_fig):
+            problems.append(f"section '{title}' has neither a table nor a figure")
+    return problems
+
+
+@beta_tool
 def read_note(name: str) -> str:
     """Read back a previously saved analysis note from notes/, e.g. to
     amend it with a new section before saving it again.
@@ -587,15 +642,21 @@ def read_note(name: str) -> str:
 def save_note(name: str, content: str) -> str:
     """Save the final analysis note as a Markdown file under notes/
     (kept out of git). Call this once, as the last step of an analysis,
-    with the full note following the standard structure:
-    Introduction (motivation) / Samples / Selection optimization /
-    Background estimation / Results / Discussion / Conclusion.
+    with the full note following docs/note_template.md (read it with
+    read_note_template): Abstract, then the ten fixed sections 1
+    Introduction ... 10 References, sections 2-7 each containing at
+    least one table or figure. Non-conforming notes are rejected.
 
     Args:
         name: file name, e.g. "dsttaunu_bf_note.md".
         content: the complete note in Markdown. Reference plots by their
             paths under plots/ and put every number in a table.
     """
+    problems = _check_note_structure(content)
+    if problems:
+        return ("note REJECTED — it does not follow docs/note_template.md "
+                "(call read_note_template): " + "; ".join(problems)
+                + ". Fix the structure and call save_note again.")
     NOTES_DIR.mkdir(exist_ok=True)
     out = NOTES_DIR / _safe_name(name, ".md")
     # web_search results carry <cite index="..."> markup; it must not leak
@@ -1060,7 +1121,7 @@ def apply_systematics(table: str, mode: str, value: float, stat: float,
     return "\n".join(lines)
 
 
-ANALYSIS_TOOLS = [read_references, list_samples, inspect_ntuple,
+ANALYSIS_TOOLS = [read_references, read_note_template, list_samples, inspect_ntuple,
                   list_branches, list_decay_modes, generate_mc,
                   generate_continuum, make_ntuple, query_ntuple,
                   plot_variable, plot_stacked, scan_cut, fit_templates,
