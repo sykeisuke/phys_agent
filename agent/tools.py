@@ -218,7 +218,11 @@ def _apply_cut(arrays: dict, selection: str) -> np.ndarray:
     ns.update(arrays)
     if not selection or not selection.strip():
         selection = "True"  # empty selection = all rows
-    mask = np.asarray(eval(selection, ns), dtype=bool)  # noqa: S307 — restricted namespace
+    # ratios such as kaonID/(kaonID+pionID) divide by zero on some rows;
+    # the warning machinery would need __import__, which the sandboxed
+    # namespace deliberately lacks, so silence numpy here
+    with np.errstate(divide="ignore", invalid="ignore"):
+        mask = np.asarray(eval(selection, ns), dtype=bool)  # noqa: S307 — restricted namespace
     if mask.ndim == 0:  # a constant selection such as "1 == 1"
         n = len(next(iter(arrays.values()))) if arrays else 0
         mask = np.full(n, bool(mask))
@@ -244,9 +248,45 @@ def list_branches(root_file: str, pattern: str = "") -> str:
             + ", ".join(names))
 
 
+def _event_key(t: dict, root_file: str):
+    """A per-row event identifier (run*1e7 + event when both exist)."""
+    names = _branches(root_file)
+    ev = "__event__" if "__event__" in names else ("event" if "event" in names else None)
+    if ev is None:
+        return None
+    if ev not in t:
+        t.update(_load(root_file, [ev] + (["__run__"] if "__run__" in names else [])))
+    key = t[ev].astype(np.int64)
+    if "__run__" in t:
+        key = key + t["__run__"].astype(np.int64) * 10**7
+    return key
+
+
+def _best_per_event(t: dict, mask: np.ndarray, best_by: str, key) -> np.ndarray:
+    """Restrict mask to one candidate per event: the one with the LOWEST
+    value of the expression best_by among the candidates passing mask."""
+    if not best_by or key is None:
+        return mask
+    ns = {"abs": np.abs, "log": np.log, "sqrt": np.sqrt, "__builtins__": {}}
+    ns.update(t)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        score = np.asarray(eval(best_by, ns), dtype=float)  # noqa: S307 — restricted namespace
+    idx = np.flatnonzero(mask)
+    if len(idx) == 0:
+        return mask
+    order = np.lexsort((score[idx], key[idx]))
+    idx = idx[order]
+    first = np.r_[True, key[idx][1:] != key[idx][:-1]]
+    out = np.zeros_like(mask)
+    out[idx[first]] = True
+    return out
+
+
 @beta_tool
-def query_ntuple(root_file: str, selection: str = "",
-                 group_by: str = "") -> str:
+def query_ntuple(root_file: str = "", selection: str = "",
+                 group_by: str = "", best_by: str = "",
+                 post_selection: str = "",
+                 root_files: list[str] | None = None) -> str:
     """Count ntuple candidates passing a selection, optionally broken down
     by the values of one branch (e.g. a truth label, a lepton flavor,
     a candidate rank). Call inspect_ntuple first for an unfamiliar file.
@@ -254,6 +294,7 @@ def query_ntuple(root_file: str, selection: str = "",
     Args:
         root_file: ROOT file under data/ (subdirectories allowed), e.g.
             "signal_taunu.root" or "kekcc/B0_Kstll_neutral_mu_ntuple_1.root".
+            May be omitted when root_files is given.
         selection: numpy boolean expression over branch names, e.g.
             "(abs(m_d0 - 1.8648) < 0.02) & (Mbc > 5.27)". Functions
             available: abs, log, sqrt. An empty selection keeps all rows.
@@ -267,11 +308,80 @@ def query_ntuple(root_file: str, selection: str = "",
         group_by: optional branch name; the count is then also reported
             per value of that branch (up to 12 most frequent values).
             For this framework's ntuples true_mode is used when present.
+        best_by: optional expression; when given, only ONE candidate per
+            event is kept among those passing the selection — the one
+            with the lowest value, e.g. "abs(deltaE)" (the published
+            best-candidate choice). Events are identified by the
+            __event__/__run__ (or event) branches.
+        post_selection: optional expression applied AFTER the
+            best-candidate choice (e.g. a signal box "(Mbc > 5.27) &
+            (abs(deltaE) < 0.05)", or a truth flag), so the best candidate
+            is chosen among all candidates passing `selection` first.
+        root_files: optional list of files (e.g. the 5 copies of one
+            sample) to query together; counts are summed over the files
+            (events are distinct per file). Use this instead of one call
+            per file.
+    When the file has an event identifier the result also reports the
+    number of distinct EVENTS passing (candidates can repeat per event).
     """
-    t = _load_for(root_file, selection, group_by or "",
+    files = list(root_files) if root_files else [root_file]
+    if not files or not files[0]:
+        return "error: give root_file or a non-empty root_files list"
+    total = passed = events = 0
+    have_key = True
+    grouped: dict = {}
+    for rf in files:
+        t = _load_for(rf, selection, group_by or "", best_by or "",
+                      post_selection or "",
+                      "true_mode" if "true_mode" in _branches(rf) else "")
+        mask = _apply_cut(t, selection)
+        key = _event_key(t, rf)
+        mask = _best_per_event(t, mask, best_by, key)
+        if post_selection:
+            mask = mask & _apply_cut(t, post_selection)
+        total += len(mask)
+        passed += int(mask.sum())
+        if key is None:
+            have_key = False
+        else:
+            events += len(np.unique(key[mask]))
+        gkey = group_by or ("true_mode" if "true_mode" in t else "")
+        if gkey and gkey in t:
+            vals = t[gkey][mask]
+            if vals.dtype.kind == "f":
+                n_nan = int(np.isnan(vals).sum())
+                if n_nan:  # report undefined values instead of dropping them
+                    grouped["nan"] = grouped.get("nan", 0) + n_nan
+                vals = vals[~np.isnan(vals)]
+            u, c = np.unique(vals, return_counts=True)
+            for v, n in zip(u, c):
+                grouped[float(v)] = grouped.get(float(v), 0) + int(n)
+    parts = [f"files: {len(files)}"] if len(files) > 1 else []
+    parts += [f"total: {total}", f"pass: {passed}"]
+    if have_key:
+        parts.append(f"events passing: {events}")
+    key = group_by or ("true_mode" if grouped and not group_by else "")
+    if grouped:
+        labels = ({1: "true D*taunu", 2: "true D*lnu", 0: "true other B",
+                   3: "continuum"} if key == "true_mode" else {})
+        for v, n in sorted(grouped.items(), key=lambda kv: -kv[1])[:12]:
+            if v == "nan":
+                parts.append(f"{key}=undefined (NaN): {n}")
+            else:
+                parts.append(f"{labels.get(int(v), f'{key}={v:g}')}: {n}")
+    return ", ".join(parts)
+    # (legacy single-file path below is unreachable)
+    t = _load_for(root_file, selection, group_by or "", best_by or "",
+                  post_selection or "",
                   "true_mode" if "true_mode" in _branches(root_file) else "")
     mask = _apply_cut(t, selection)
+    key = _event_key(t, root_file)
+    mask = _best_per_event(t, mask, best_by, key)
+    if post_selection:
+        mask = mask & _apply_cut(t, post_selection)
     parts = [f"total: {len(mask)}", f"pass: {int(mask.sum())}"]
+    if key is not None:
+        parts.append(f"events passing: {len(np.unique(key[mask]))}")
     key = group_by or ("true_mode" if "true_mode" in t else "")
     if key and key in t:
         vals = t[key][mask]
@@ -409,7 +519,8 @@ def plot_variable(root_files: list[str], variable: str, output_name: str,
 @beta_tool
 def scan_cut(signal_file: str, background_files: list[str], variable: str,
              thresholds: list[float], direction: str = ">",
-             base_selection: str = "1 == 1") -> str:
+             base_selection: str = "1 == 1", best_by: str = "",
+             count_events: bool = False) -> str:
     """Scan a one-dimensional cut and report S, B and S/sqrt(S+B) at each
     threshold, so the best working point can be chosen (cut & count policy:
     optimize one variable at a time on top of a fixed base selection).
@@ -422,21 +533,31 @@ def scan_cut(signal_file: str, background_files: list[str], variable: str,
         thresholds: cut values to test, e.g. [0.5, 1.0, 1.5, 2.0].
         direction: ">" keeps variable > threshold, "<" keeps variable < threshold.
         base_selection: numpy boolean expression applied before the scan.
+        best_by: optional expression (e.g. "abs(deltaE)"): keep one
+            candidate per event, the lowest, among those passing base
+            selection AND the scanned cut.
+        count_events: count distinct events instead of candidates.
     """
     if direction not in (">", "<"):
         return 'error: direction must be ">" or "<"'
-    sig = _load_for(signal_file, base_selection, variable)
-    bkgs = [_load_for(b, base_selection, variable) for b in background_files]
+    sig = _load_for(signal_file, base_selection, variable, best_by or "")
+    bkgs = [_load_for(b, base_selection, variable, best_by or "") for b in background_files]
     sig_base = _apply_cut(sig, base_selection)
     bkg_base = [_apply_cut(b, base_selection) for b in bkgs]
-    lines = [f"threshold  S  B  S/sqrt(S+B)   (base: {base_selection})"]
+    sig_key = _event_key(sig, signal_file)
+    bkg_keys = [_event_key(t, b) for t, b in zip(bkgs, background_files)]
+    unit = "events" if count_events else "candidates"
+    lines = [f"threshold  S  B  S/sqrt(S+B)   (base: {base_selection}; counting {unit})"]
     for thr in thresholds:
-        def passing(t, base):
+        def passing(t, base, key):
             var = t[variable]
-            keep = var > thr if direction == ">" else var < thr
-            return int((base & keep).sum())
-        s = passing(sig, sig_base)
-        b = sum(passing(t, m) for t, m in zip(bkgs, bkg_base))
+            keep = base & (var > thr if direction == ">" else var < thr)
+            keep = _best_per_event(t, keep, best_by, key)
+            if count_events and key is not None:
+                return len(np.unique(key[keep]))
+            return int(keep.sum())
+        s = passing(sig, sig_base, sig_key)
+        b = sum(passing(t, m, k) for t, m, k in zip(bkgs, bkg_base, bkg_keys))
         fom = s / np.sqrt(s + b) if s + b > 0 else 0.0
         lines.append(f"{variable} {direction} {thr}: S={s} B={b} FoM={fom:.2f}")
     return "\n".join(lines)
@@ -449,6 +570,61 @@ def read_references() -> str:
     at the PLAN stage, before designing any selection, and cite the papers
     it lists in your plan and note."""
     return (REPO / "docs" / "references.md").read_text()
+
+
+@beta_tool
+def read_note_template() -> str:
+    """Read the fixed analysis-note template (section skeleton modelled on
+    a Belle II paper, plus the agent-specific provenance section, and the
+    tables/figures each section must contain). Call this before writing
+    the note; save_note rejects notes that deviate from it."""
+    return (REPO / "docs" / "note_template.md").read_text()
+
+
+_NOTE_SECTIONS = [
+    ("introduction", "1 Introduction"),
+    ("detector", "2 Detector model and samples"),
+    ("selection", "3 Event selection and reconstruction"),
+    ("background", "4 Background estimation and suppression"),
+    ("yield", "5 Signal yield extraction"),
+    ("systematic", "6 Efficiency corrections and systematic uncertainties"),
+    ("results", "7 Results and summary"),
+    ("discussion", "8 Discussion"),
+    ("provenance", "9 Analysis provenance"),
+    ("references", "10 References"),
+]
+_NEEDS_TABLE_OR_FIGURE = {"detector", "selection", "background", "yield",
+                          "systematic", "results"}
+
+
+def _check_note_structure(content: str) -> list:
+    """Problems with the note's structure (empty list = conforms)."""
+    problems = []
+    lines = content.splitlines()
+    heads = [(i, l) for i, l in enumerate(lines) if l.startswith("## ")]
+    if not re.search(r"^##\s*Abstract", content, re.M):
+        problems.append("missing '## Abstract' before section 1")
+    pos = []
+    for key, title in _NOTE_SECTIONS:
+        hit = [i for i, l in heads if key in l.lower()]
+        if not hit:
+            problems.append(f"missing section '## {title}'")
+            pos.append(None)
+        else:
+            pos.append(hit[0])
+    found = [p for p in pos if p is not None]
+    if found != sorted(found):
+        problems.append("sections are not in the template order")
+    for (key, title), start in zip(_NOTE_SECTIONS, pos):
+        if start is None or key not in _NEEDS_TABLE_OR_FIGURE:
+            continue
+        end = min([i for i, _ in heads if i > start] + [len(lines)])
+        body = "\n".join(lines[start:end])
+        has_table = re.search(r"^\|.*\|\s*$", body, re.M) is not None
+        has_fig = "![" in body
+        if not (has_table or has_fig):
+            problems.append(f"section '{title}' has neither a table nor a figure")
+    return problems
 
 
 @beta_tool
@@ -469,15 +645,21 @@ def read_note(name: str) -> str:
 def save_note(name: str, content: str) -> str:
     """Save the final analysis note as a Markdown file under notes/
     (kept out of git). Call this once, as the last step of an analysis,
-    with the full note following the standard structure:
-    Introduction (motivation) / Samples / Selection optimization /
-    Background estimation / Results / Discussion / Conclusion.
+    with the full note following docs/note_template.md (read it with
+    read_note_template): Abstract, then the ten fixed sections 1
+    Introduction ... 10 References, sections 2-7 each containing at
+    least one table or figure. Non-conforming notes are rejected.
 
     Args:
         name: file name, e.g. "dsttaunu_bf_note.md".
         content: the complete note in Markdown. Reference plots by their
             paths under plots/ and put every number in a table.
     """
+    problems = _check_note_structure(content)
+    if problems:
+        return ("note REJECTED — it does not follow docs/note_template.md "
+                "(call read_note_template): " + "; ".join(problems)
+                + ". Fix the structure and call save_note again.")
     NOTES_DIR.mkdir(exist_ok=True)
     out = NOTES_DIR / _safe_name(name, ".md")
     # web_search results carry <cite index="..."> markup; it must not leak
@@ -513,7 +695,8 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
                  sample_labels: list[str] | None = None,
                  x_label: str = "", log_y: bool = False,
                  split_by: str = "",
-                 split_labels: list[str] | None = None) -> str:
+                 split_labels: list[str] | None = None,
+                 best_by: str = "", post_selection: str = "") -> str:
     """Publication-style stacked histogram of one variable with optional
     vertical cut lines. Use this for the note figures: preselection
     windows, discriminating variables, control regions. The stack is
@@ -543,6 +726,11 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
             (e.g. "isSignal"); values are pooled across all files.
         split_labels: optional legend labels for split_by values, as
             "value=label" strings, e.g. ["1=signal", "0=background"].
+        best_by: optional expression (e.g. "abs(deltaE)"): keep one
+            candidate per event, the lowest, among those passing the
+            selection.
+        post_selection: optional expression applied after the
+            best-candidate choice (e.g. a signal box).
     """
     import matplotlib
     matplotlib.use("Agg")
@@ -569,8 +757,10 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
             lab_map[float(k)] = v
         pooled: dict = {}
         for rf, wt in zip(root_files, weights):
-            t = _load_for(rf, selection, variable, split_by)
-            m = _apply_cut(t, selection)
+            t = _load_for(rf, selection, variable, split_by, best_by or "", post_selection or "")
+            m = _best_per_event(t, _apply_cut(t, selection), best_by, _event_key(t, rf))
+            if post_selection:
+                m = m & _apply_cut(t, post_selection)
             keyv = t[split_by][m]
             for val in np.unique(keyv[~np.isnan(keyv)] if keyv.dtype.kind == "f" else keyv):
                 sel = m.copy()
@@ -589,8 +779,10 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
         for mode, (lab, col) in comps.items():
             v, w = [], []
             for rf, wt in zip(root_files, weights):
-                t = _load_for(rf, selection, variable, "true_mode", "lep_true_pid")
-                m = _apply_cut(t, selection)
+                t = _load_for(rf, selection, variable, "true_mode", "lep_true_pid", best_by or "", post_selection or "")
+                m = _best_per_event(t, _apply_cut(t, selection), best_by, _event_key(t, rf))
+                if post_selection:
+                    m = m & _apply_cut(t, post_selection)
                 lep_ok = np.isin(np.abs(t.get("lep_true_pid",
                                               t["true_mode"] * 0 + 13)),
                                  (11, 13))
@@ -611,8 +803,10 @@ def plot_stacked(root_files: list[str], weights: list[float], variable: str,
         # yield at the bottom, labeled by the file name
         groups = {}  # label -> [yield, values, weights] (files merged)
         for i, (rf, wt) in enumerate(zip(root_files, weights)):
-            t = _load_for(rf, selection, variable)
-            m = _apply_cut(t, selection)
+            t = _load_for(rf, selection, variable, best_by or "", post_selection or "")
+            m = _best_per_event(t, _apply_cut(t, selection), best_by, _event_key(t, rf))
+            if post_selection:
+                m = m & _apply_cut(t, post_selection)
             lab = sample_labels[i] if sample_labels else Path(rf).stem
             g = groups.setdefault(lab, [0.0, [], []])
             g[0] += float(m.sum() * wt)
@@ -654,7 +848,8 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
                   bkg_syst: float = 0.10,
                   lumi_projection: bool = False,
                   dataset_lumi_invab: float = 0.000906,
-                  channels: list[str] | None = None) -> str:
+                  channels: list[str] | None = None,
+                  best_by: str = "", post_selection: str = "") -> str:
     """Generic binned maximum-likelihood template fit (pyhf + MINUIT) of
     mu x S + B in one variable. S is the truth-labeled signal component of
     the dataset (signal_selection), B is everything else; per-bin background
@@ -686,6 +881,11 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
             ["e=e1_B0_E > 0", "mu=mu1_B0_E > 0"] or
             ["ee=lep_flavor == 11", "mumu=lep_flavor == 13"]; each file
             contributes to a channel only where the branches exist.
+        best_by: optional expression (e.g. "abs(deltaE)"): keep one
+            candidate per event, the lowest, among those passing the
+            selection (and the channel selection), before histogramming.
+        post_selection: optional expression applied after the
+            best-candidate choice.
         bkg_syst: relative background normalization uncertainty per bin.
         lumi_projection: also compute the statistical-only Asimov expected
             precision at 0.1, 0.36, 1, 5 and 50 ab^-1 (background shapes
@@ -709,10 +909,13 @@ def fit_templates(data_files: list[str], weights: list[float], variable: str,
                 needed = set(_known_free_symbols([chan_sel]))
                 if not needed <= set(_branches(rf)):
                     continue  # this file has no such channel
-            t = _load_for(rf, selection, signal_selection, variable, chan_sel or "")
+            t = _load_for(rf, selection, signal_selection, variable, chan_sel or "", best_by or "", post_selection or "")
             m = _apply_cut(t, selection)
             if chan_sel:
                 m = m & _apply_cut(t, chan_sel)
+            m = _best_per_event(t, m, best_by, _event_key(t, rf))
+            if post_selection:
+                m = m & _apply_cut(t, post_selection)
             is_sig = m & _apply_cut(t, signal_selection)
             S += wt * np.histogram(t[variable][is_sig], bins=bins)[0]
             hb = np.histogram(t[variable][m & ~is_sig], bins=bins)[0]
@@ -921,7 +1124,7 @@ def apply_systematics(table: str, mode: str, value: float, stat: float,
     return "\n".join(lines)
 
 
-ANALYSIS_TOOLS = [read_references, list_samples, inspect_ntuple,
+ANALYSIS_TOOLS = [read_references, read_note_template, list_samples, inspect_ntuple,
                   list_branches, list_decay_modes, generate_mc,
                   generate_continuum, make_ntuple, query_ntuple,
                   plot_variable, plot_stacked, scan_cut, fit_templates,

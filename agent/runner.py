@@ -6,10 +6,13 @@ request_approval tool, mirroring the workflow figure in the README.
 """
 from __future__ import annotations
 
+import re
+
 import anthropic
 from anthropic import beta_tool
 
-from .tools import ANALYSIS_TOOLS, NOTES_DIR, _safe_name
+from .tools import (ANALYSIS_TOOLS, NOTES_DIR, _safe_name,
+                    _check_note_structure)
 
 MODEL = "claude-sonnet-5"
 
@@ -96,24 +99,34 @@ student. Follow this loop strictly:
 3. REPORT: give a short Markdown report in the conversation: what was
    done, the numbers in a table, which plots were written.
 4. NOTE: for a full analysis (one that produced a physics result, not a
-   quick check), finish by writing a complete analysis note with the
-   save_note tool, structured as: Abstract (a self-contained quantitative summary) / Introduction (motivation, citing the
-   analyses followed) / Samples (table: process, generator+model, events,
-   seeds) / Selection optimization (variables, scans, chosen cuts) /
-   Background estimation (composition, method) / Results (cut & count and
-   any fits, with uncertainties) / Discussion (limitations, systematics
-   not yet evaluated) / Conclusion. Quality bar (a physicist should be
-   able to referee it): give a cutflow table with per-stage efficiencies;
+   quick check), call read_note_template and write the complete analysis
+   note with save_note, following the template EXACTLY: Abstract, then
+   the ten fixed sections (1 Introduction, 2 Detector model and samples,
+   3 Event selection and reconstruction, 4 Background estimation and
+   suppression, 5 Signal yield extraction, 6 Efficiency corrections and
+   systematic uncertainties, 7 Results and summary, 8 Discussion,
+   9 Analysis provenance, 10 References). A section that does not apply
+   is kept with one sentence saying why. Sections 2-7 each contain at
+   least one table or figure; the template lists what each must contain
+   (samples table, selection table, cutflow, composition and control
+   regions, extraction method with post-fit figures, efficiency and
+   systematics tables with a source column, result and comparison
+   tables). Quality bar (a physicist should be able to referee it):
    motivate every cut by naming the background it removes and show the
-   scan that fixed its value; where a control region exists, quote its
-   yield and purity; embed every plot you produced with Markdown image syntax at the point where it is discussed, with a full descriptive caption as the alt text — what is shown, after which selection stage, and what the reader should notice (![The m2miss distribution after the D* windows, ...](plots/<name>.png)); a bare filename is not acceptable; state
-   what is NOT modeled and how a real analysis would handle it; cite the
-   published analyses you followed. Every number in the note must come
-   from a tool result of this session. State precisely which samples
-   were used: if any Belle II official MC or data entered the analysis,
-   the note must carry the header "INTERNAL — Belle II official samples
-   used; not for public release" instead of the public-materials
-   disclaimer, and must not claim to use only public materials.
+   scan or distribution that fixed its value; embed every plot you
+   produced with Markdown image syntax at the point where it is
+   discussed, with a full descriptive caption as the alt text — what is
+   shown, after which selection stage, and what the reader should notice
+   (![The m2miss distribution after the D* windows, ...](plots/<name>.png));
+   a bare filename is not acceptable; state what is NOT modeled and how a
+   real analysis would handle it; cite the published analyses you
+   followed. Every number in the note must come from a tool result of
+   this session. State precisely which samples were used: if any Belle II
+   official MC or data entered the analysis, the note must carry the
+   header "INTERNAL — Belle II official samples used; not for public
+   release" instead of the public-materials disclaimer, and must not
+   claim to use only public materials. save_note rejects a note whose
+   structure deviates from the template; fix it and save again.
 5. TYPESET: once save_note accepts the Markdown note, produce the final
    typeset version with save_note_latex: a complete LaTeX document with
    the title block (author lines, version/date, the public-materials
@@ -121,7 +134,8 @@ student. Follow this loop strictly:
    numbered figure floats with descriptive captions, and a References
    section (thebibliography) collecting every publication cited in the
    text, with \\cite commands at the in-text mentions. The LaTeX content
-   must match the accepted Markdown note exactly; if compilation fails,
+   must match the accepted Markdown note exactly (same ten sections in
+   the same order); if compilation fails,
    fix the LaTeX and call save_note_latex again.
 
 Analysis policy:
@@ -219,6 +233,13 @@ def make_approval_tool(review: str, client, model: str,
 NOTE_REVIEWER_PROMPT = """\
 You are refereeing a physics ANALYSIS NOTE (Markdown). Judge it as a peer
 reviewer would. Checklist (PASS/FAIL + one sentence each):
+- structure: Abstract followed by exactly the ten template sections in
+  order (Introduction; Detector model and samples; Event selection and
+  reconstruction; Background estimation and suppression; Signal yield
+  extraction; Efficiency corrections and systematic uncertainties;
+  Results and summary; Discussion; Analysis provenance; References),
+  sections 2-7 each with at least one table or figure, and no section
+  silently omitted (a non-applicable one says so in one sentence);
 - every section opens with a short paragraph of context before tables/plots;
 - every cut names the background it targets and shows the scan or
   distribution that fixed its value;
@@ -250,6 +271,16 @@ def make_note_tool(review: str, client, model: str,
             name: file name, e.g. "dsttaunu_bf_note.md".
             content: the complete note in Markdown.
         """
+        # web_search results carry (cite index="..."> markup; drop the tags
+        content = re.sub(r"\(?<?cite index=\"[^\"]*\">", "", content)
+        content = content.replace("</cite>", "")
+        # mechanical template check first (free; does not count as a
+        # referee revision round)
+        problems = _check_note_structure(content)
+        if problems:
+            return ("note REJECTED — it does not follow docs/note_template.md "
+                    "(call read_note_template): " + "; ".join(problems)
+                    + ". Fix the structure and call save_note again.")
         if review == "ai":
             verdict = client.messages.create(
                 model=model, max_tokens=8192, system=NOTE_REVIEWER_PROMPT,

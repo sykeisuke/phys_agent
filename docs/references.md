@@ -85,6 +85,9 @@ Continuum suppressed with event-shape variables (a BDT in the paper).
 
 ## Conventions for a publication-grade analysis note
 
+The section skeleton is fixed by docs/note_template.md (read it with
+the read_note_template tool); the points below apply inside it.
+
 - Every section opens with a short paragraph saying what the section
   establishes and why it matters, before any table or plot.
 - Every cut: state the background it targets, show the distribution that
