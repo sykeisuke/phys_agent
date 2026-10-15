@@ -528,10 +528,29 @@ def plot_variable(root_files: list[str], variable: str, output_name: str,
 def scan_cut(signal_file: str, background_files: list[str], variable: str,
              thresholds: list[float], direction: str = ">",
              base_selection: str = "1 == 1", best_by: str = "",
-             count_events: bool = False) -> str:
-    """Scan a one-dimensional cut and report S, B and S/sqrt(S+B) at each
-    threshold, so the best working point can be chosen (cut & count policy:
-    optimize one variable at a time on top of a fixed base selection).
+             count_events: bool = False, fom: str = "s_sqrt_sb",
+             signal_weight: float = 1.0,
+             background_weights: list[float] | None = None,
+             sigma_b: float = 0.0, punzi_a: float = 3.0,
+             fit_variable: str = "", fit_range: list[float] | None = None,
+             n_bins: int = 20) -> str:
+    """Scan a one-dimensional cut and report S, B and a figure of merit at
+    each threshold, so the best working point can be chosen (cut & count
+    policy: optimize one variable at a time on top of a fixed base
+    selection). S and B are expected yields when weights are given
+    (raw MC counts otherwise — then the FoM depends on the MC sample
+    sizes, say so). Figures of merit (see docs/recipes):
+      s_sqrt_sb  S/sqrt(S+B): statistics only (BF measurement, benchmark S)
+      syst       S/sqrt(S+B+(sigma_b*B)^2): with a relative background
+                 systematic sigma_b (the default of the BF recipe)
+      punzi      eff/(a/2+sqrt(B)), eff relative to the signal file before
+                 any cut; independent of the assumed signal (searches)
+      asimov     1/sigma_mu from an Asimov template fit of fit_variable
+                 (background uncertainty = MC stat (+) sigma_b*B); the most
+                 faithful and the slowest; single bin when fit_variable is
+                 empty.
+    S/sqrt(S+B) is always printed next to the chosen FoM so the note can
+    state how the optimum moves.
 
     Args:
         signal_file: ROOT file under data/ treated as signal (S).
@@ -545,30 +564,116 @@ def scan_cut(signal_file: str, background_files: list[str], variable: str,
             candidate per event, the lowest, among those passing base
             selection AND the scanned cut.
         count_events: count distinct events instead of candidates.
+        fom: "s_sqrt_sb" (default), "syst", "punzi" or "asimov".
+        signal_weight: expected-yield weight of the signal file.
+        background_weights: per-file weights of background_files (default 1).
+        sigma_b: relative systematic uncertainty on B (syst, asimov).
+        punzi_a: the a in eff/(a/2+sqrt(B)): 3 for a limit, 5 for discovery.
+        fit_variable: for asimov, the branch to histogram, e.g. "Mbc".
+        fit_range: for asimov, [lo, hi] of fit_variable.
+        n_bins: for asimov, number of bins of fit_variable.
     """
     if direction not in (">", "<"):
         return 'error: direction must be ">" or "<"'
-    sig = _load_for(signal_file, base_selection, variable, best_by or "")
-    bkgs = [_load_for(b, base_selection, variable, best_by or "") for b in background_files]
+    if fom not in ("s_sqrt_sb", "syst", "punzi", "asimov"):
+        return "error: fom must be s_sqrt_sb, syst, punzi or asimov"
+    if fom == "asimov" and fit_variable and not fit_range:
+        return "error: asimov with fit_variable needs fit_range [lo, hi]"
+    bw = list(background_weights or [1.0] * len(background_files))
+    if len(bw) != len(background_files):
+        return "error: background_weights must match background_files"
+    extra = [fit_variable] if fit_variable else []
+    sig = _load_for(signal_file, base_selection, variable, best_by or "", *extra)
+    bkgs = [_load_for(b, base_selection, variable, best_by or "", *extra)
+            for b in background_files]
     sig_base = _apply_cut(sig, base_selection)
     bkg_base = [_apply_cut(b, base_selection) for b in bkgs]
     sig_key = _event_key(sig, signal_file)
     bkg_keys = [_event_key(t, b) for t, b in zip(bkgs, background_files)]
+    n_sig_total = (len(np.unique(sig_key)) if count_events and sig_key is not None
+                   else len(sig[variable]))
     unit = "events" if count_events else "candidates"
-    lines = [f"threshold  S  B  S/sqrt(S+B)   (base: {base_selection}; counting {unit})"]
+    weighted = signal_weight != 1.0 or any(w != 1.0 for w in bw)
+    head = (f"threshold  S  B  S/sqrt(S+B)"
+            + (f"  {fom}" if fom != "s_sqrt_sb" else "")
+            + f"   (base: {base_selection}; counting {unit}; "
+            + ("expected yields" if weighted else
+               "RAW MC counts, no weights — FoM depends on sample sizes")
+            + (f"; sigma_b={sigma_b}" if fom in ("syst", "asimov") else "")
+            + (f"; a={punzi_a}, eff relative to {n_sig_total} signal {unit}"
+               if fom == "punzi" else "")
+            + (f"; Asimov fit of {fit_variable or 'one bin'}" if fom == "asimov"
+               else "") + ")")
+    lines = [head]
     for thr in thresholds:
-        def passing(t, base, key):
+        def keep_mask(t, base):
             var = t[variable]
-            keep = base & (var > thr if direction == ">" else var < thr)
-            keep = _best_per_event(t, keep, best_by, key)
+            return base & (var > thr if direction == ">" else var < thr)
+
+        def count(t, keep, key):
             if count_events and key is not None:
                 return len(np.unique(key[keep]))
             return int(keep.sum())
-        s = passing(sig, sig_base, sig_key)
-        b = sum(passing(t, m, k) for t, m, k in zip(bkgs, bkg_base, bkg_keys))
-        fom = s / np.sqrt(s + b) if s + b > 0 else 0.0
-        lines.append(f"{variable} {direction} {thr}: S={s} B={b} FoM={fom:.2f}")
+        ks = _best_per_event(sig, keep_mask(sig, sig_base), best_by, sig_key)
+        kb = [_best_per_event(t, keep_mask(t, m), best_by, k)
+              for t, m, k in zip(bkgs, bkg_base, bkg_keys)]
+        s_raw = count(sig, ks, sig_key)
+        b_raw = [count(t, k, key) for t, k, key in zip(bkgs, kb, bkg_keys)]
+        S = s_raw * signal_weight
+        B = sum(n * w for n, w in zip(b_raw, bw))
+        B_stat = np.sqrt(sum(n * w * w for n, w in zip(b_raw, bw)))
+        base_fom = S / np.sqrt(S + B) if S + B > 0 else 0.0
+        if fom == "syst":
+            val = S / np.sqrt(S + B + (sigma_b * B) ** 2) if S + B > 0 else 0.0
+        elif fom == "punzi":
+            eff = s_raw / n_sig_total if n_sig_total else 0.0
+            val = eff / (punzi_a / 2 + np.sqrt(B))
+        elif fom == "asimov":
+            if fit_variable:
+                bins = np.linspace(fit_range[0], fit_range[1], n_bins + 1)
+                Sh = np.histogram(sig[fit_variable][ks], bins)[0] * signal_weight
+                Bh = np.zeros(n_bins)
+                Bv = np.zeros(n_bins)
+                for t, k, w in zip(bkgs, kb, bw):
+                    h = np.histogram(t[fit_variable][k], bins)[0]
+                    Bh += h * w
+                    Bv += h * w * w
+            else:
+                Sh, Bh, Bv = (np.array([S]), np.array([B]),
+                              np.array([B_stat ** 2]))
+            sigma_mu = _asimov_sigma_mu(Sh, Bh, np.sqrt(Bv + (sigma_b * Bh) ** 2))
+            val = 1.0 / sigma_mu if sigma_mu and np.isfinite(sigma_mu) else 0.0
+        else:
+            val = base_fom
+        fmt = (lambda x: f"{x:.1f}") if weighted else (lambda x: f"{x:.0f}")
+        line = (f"{variable} {direction} {thr}: S={fmt(S)} B={fmt(B)}"
+                f" S/sqrt(S+B)={base_fom:.2f}")
+        if fom != "s_sqrt_sb":
+            line += f" {fom}={val:.3g}"
+        lines.append(line)
     return "\n".join(lines)
+
+
+def _asimov_sigma_mu(S, B, unc) -> float:
+    """Expected uncertainty on the signal strength mu from an Asimov fit
+    (data = S + B) of one channel with per-bin background uncertainties."""
+    import pyhf
+    pyhf.set_backend("numpy", "minuit")
+    floor = 1e-6
+    S = np.maximum(np.asarray(S, float), 0.0)
+    B = np.maximum(np.asarray(B, float), floor)
+    unc = np.maximum(np.asarray(unc, float), floor)
+    if S.sum() <= 0:
+        return float("inf")
+    model = pyhf.Model({"channels": [{"name": "c", "samples": [
+        {"name": "signal", "data": S.tolist(),
+         "modifiers": [{"name": "mu", "type": "normfactor", "data": None}]},
+        {"name": "background", "data": B.tolist(),
+         "modifiers": [{"name": "ub", "type": "shapesys",
+                        "data": unc.tolist()}]}]}]}, poi_name="mu")
+    data = np.concatenate([S + B, model.config.auxdata])
+    r = np.asarray(pyhf.infer.mle.fit(data, model, return_uncertainties=True))
+    return float(r[model.config.poi_index][1])
 
 
 @beta_tool

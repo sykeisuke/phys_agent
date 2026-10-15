@@ -22,6 +22,6 @@ chosen without looking at the signal region.
 | `s_sqrt_sb` | S/√(S+B) | only when a benchmark BF is given |
 | `expected_limit` | the median expected upper limit at each cut value | the most faithful |
 
-Note content: the blinding statement, the sideband figures with the
+The Punzi FoM is `scan_cut(..., fom="punzi", punzi_a=3)` (G. Punzi, arXiv:physics/0308063). Note content: the blinding statement, the sideband figures with the
 extrapolation, the peaking-background table, the expected limit (and
 its ±1σ band) as the result table.

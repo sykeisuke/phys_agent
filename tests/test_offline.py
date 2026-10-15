@@ -156,6 +156,25 @@ def test_recipe_and_selection_tools():
     assert read_selection.call({"name": "nope"}).startswith("error")
 
 
+def test_scan_cut_figures_of_merit():
+    from agent.tools import scan_cut
+    common = dict(signal_file="signal_taunu.root",
+                  background_files=["norm_lnu.root", "bkg_dststlnu.root"],
+                  variable="m2miss", thresholds=[1.5],
+                  base_selection="abs(m_d0 - 1.8648) < 0.02")
+    base = scan_cut.call(common)
+    assert "RAW MC counts" in base and "S/sqrt(S+B)=" in base
+    w = scan_cut.call({**common, "fom": "syst", "sigma_b": 0.2,
+                       "signal_weight": 0.1, "background_weights": [2.0, 1.0]})
+    assert "expected yields" in w and "syst=" in w and "S=220.3" in w, w
+    assert "punzi=" in scan_cut.call({**common, "fom": "punzi"})
+    a = scan_cut.call({**common, "fom": "asimov", "fit_variable": "m2miss",
+                       "fit_range": [-1, 8], "n_bins": 10})
+    assert "asimov=" in a and "Asimov fit of m2miss" in a, a
+    assert scan_cut.call({**common, "fom": "bogus"}).startswith("error")
+    assert scan_cut.call({**common, "fom": "asimov", "fit_variable": "Mbc"}).startswith("error")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
