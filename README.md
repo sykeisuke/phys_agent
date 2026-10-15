@@ -334,11 +334,14 @@ vetoes). Results, plots, and the commands to reproduce them:
 **[docs/demonstrations.md](docs/demonstrations.md)**.
 
 The agent's final products are **analysis notes** (Plan → Execute → Report
-→ Note): after a full analysis it writes a structured note — Introduction /
-Samples / Selection optimization / Background estimation / Results /
-Discussion / Conclusion — via its `save_note` tool, with every number taken
+→ Note): after a full analysis it writes a structured note following the
+fixed paper-style template in [docs/note_template.md](docs/note_template.md)
+(Introduction … Results and summary, Discussion, plus an Analysis
+provenance section) via its `save_note` tool, with every number taken
 from the session's tool results. Two complete notes are published in
-**[docs/notes/](docs/notes/)**.
+**[docs/notes/](docs/notes/)**. The task texts that started each run are
+archived, with their outcomes, in **[docs/tasks/](docs/tasks/)**
+(`scripts/run_task.sh <task file>` re-runs one).
 
 ---
 

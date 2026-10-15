@@ -1,0 +1,20 @@
+Reproduce, on Belle II official MC ntuples (MC only, no data), the event selection of the published Belle II measurement of B -> K*(892) l+ l- with 189 fb^-1 (arXiv:2206.05946; summarized in the references digest), restricted in this first pass to the NEUTRAL channel B0 -> K*0(K+ pi-) l+ l-, l = e, mu. This is an INTERNAL study: Belle II official samples are used, so the note must carry the INTERNAL header and must not claim public materials only.
+
+Samples (already under data/kekcc/; do not generate anything; call list_samples and inspect_ntuple first):
+- B0_Kstll_neutral_{e,mu}_ntuple_1..5.root : signal MC, B0 -> K*0 l+ l-, reconstructed in the e+e- and mu+mu- channels respectively
+- B0_JpsiKst_neutral_{e,mu}_ntuple_1..5.root : B0 -> J/psi(-> l+ l-) K*0 MC (the charmonium control channel of the published analysis)
+- mixed_neutral_{e,mu}_ntuple_1..5.root and charged_neutral_{e,mu}_ntuple_1..5.root : generic B0B0bar ("mixed") and B+B- ("charged") MC reconstructed in the neutral K*0 channel
+- the *_charged_* files are the B+ -> K*+ l+ l- channel: leave them for a later pass.
+Electron files name the lepton branches e1_B0_*, e2_B0_*; muon files mu1_B0_*, mu2_B0_*. Each file holds several candidates per event (branch B_rank gives the best-candidate rank, __event__/__run__ identify events); treat multiple candidates explicitly.
+
+Normalisation: the generated event counts and luminosity weights of these samples are NOT available to you. Do not guess them. Quote raw counts, and selection retentions relative to the candidates present in the ntuples; state clearly that absolute efficiencies and luminosity-scaled yields require the generated counts, which will be supplied later.
+
+Task:
+1. Follow the published selection as closely as the branches allow: K*(892) mass window, Mbc and per-flavor Delta E windows, the per-flavor charmonium vetoes in m_ll (J/psi and psi(2S) windows from the digest), and continuum suppression with event-shape variables (cut & count, e.g. foxWolframR2 or a thrust/cosTBTO variable — scan it; no BDT). Where the paper's exact value is not in the digest, use web_search once to confirm, else choose by a scan and say so. Show stacked figures of each variable (per flavor where relevant) with the cuts indicated, using sample_labels and log_y, and split_by isSignal where it helps to show mis-reconstruction.
+2. Cutflow per sample and per flavor (raw candidates, retention per stage), with the best-candidate stage made explicit.
+3. Composition after the full selection: true signal (isSignal == 1) vs mis-reconstructed candidates in the signal MC, and the surviving J/psi K*0 and generic candidates. Control region: the J/psi veto window itself (purity of J/psi K*0 there, and what fraction of signal MC leaks in).
+4. A template fit with fit_templates of Mbc (all cuts except the Mbc one; channels e and mu as "name=selection" strings on the lepton branches, e.g. ["e=e1_B0_E > 0", "mu=mu1_B0_E > 0"]; signal_selection "isSignal == 1"; weights 1 for every file; dataset_lumi_invab = 1.0, no lumi projection), as a closure/consistency check of the machinery on official MC, with its caveats stated.
+5. Compare with the published analysis where a like-for-like comparison exists (selection windows used; the shape of the retention; the published yields 22 +- 6 (mu mu) and 18 +- 6 (e e) are at 189 fb^-1 and cannot be compared without the normalisation — say so), and list what is missing for a full reproduction (generated counts, continuum MC, the charged channel, the 2D Mbc-DeltaE fit, systematics).
+6. Write the note with save_note as kstll_official_mc_note.md (INTERNAL header), then the typeset version with save_note_latex.
+
+Keep the number of tool calls moderate: use 5 files per sample where needed, but scan cuts on one or two files per sample.
