@@ -429,6 +429,14 @@ def list_samples(pattern: str = "") -> str:
     lines = ["sample group (files) : total entries : example file"]
     for stem, (nf, ne, files) in groups.items():
         lines.append(f"{stem} ({nf}) : {ne} : {files[0]}")
+    # sample context files travel with the samples (data/<dir>/CONTEXT.md)
+    dirs = sorted({str(Path(f).parent) for g in groups.values() for f in g[2]})
+    for d in dirs:
+        ctx = DATA_DIR / d / "CONTEXT.md"
+        if ctx.exists():
+            lines.append(f"\n--- sample context data/{d}/CONTEXT.md "
+                         "(authoritative facts; do not guess what it "
+                         "does not state) ---\n" + ctx.read_text().strip())
     return "\n".join(lines)
 
 
@@ -570,6 +578,51 @@ def read_references() -> str:
     at the PLAN stage, before designing any selection, and cite the papers
     it lists in your plan and note."""
     return (REPO / "docs" / "references.md").read_text()
+
+
+@beta_tool
+def read_recipe(name: str = "") -> str:
+    """Read an analysis recipe (docs/recipes/<name>.md): the generalized
+    strategy for one kind of measurement, with the seven specification
+    fields and their defaults. Call with no name to get the index and
+    the specification format, then with the recipe named in the task
+    (or the one that fits the goal). Fill every field in your plan.
+
+    Args:
+        name: recipe name, e.g. "bf_measurement", "ratio_measurement",
+            "search", "cutflow_reproduction"; empty for the index.
+    """
+    rdir = REPO / "docs" / "recipes"
+    if name and not name.endswith(".md"):
+        name += ".md"
+    if name and not _NAME_RE.match(name):
+        return f"error: invalid recipe name {name!r}"
+    path = rdir / (name or "README.md")
+    if not path.exists():
+        names = sorted(p.stem for p in rdir.glob("*.md") if p.stem != "README")
+        return f"error: no recipe '{name}'; available: {', '.join(names)}"
+    return path.read_text()
+
+
+@beta_tool
+def read_selection(name: str) -> str:
+    """Read a reference selection file (docs/selections/<name>.yaml) for
+    selection Mode 1: the cuts in order, per-channel branch substitutions,
+    the best-candidate rule, the signal box and, when known, the
+    reference cutflow. Apply the cuts exactly as written.
+
+    Args:
+        name: file name, e.g. "kstll_reference_ntuple_plots.yaml".
+    """
+    if not name.endswith(".yaml"):
+        name += ".yaml"
+    if not _NAME_RE.match(name):
+        return f"error: invalid selection file name {name!r}"
+    path = REPO / "docs" / "selections" / name
+    if not path.exists():
+        avail = sorted(p.name for p in path.parent.glob("*.yaml"))
+        return f"error: no selection file '{name}'; available: {', '.join(avail)}"
+    return path.read_text()
 
 
 @beta_tool
@@ -1190,7 +1243,8 @@ def apply_systematics(table: str, mode: str, value: float, stat: float,
     return "\n".join(lines)
 
 
-ANALYSIS_TOOLS = [read_references, read_note_template, list_samples, inspect_ntuple,
+ANALYSIS_TOOLS = [read_references, read_recipe, read_selection,
+                  read_note_template, list_samples, inspect_ntuple,
                   list_branches, list_decay_modes, generate_mc,
                   generate_continuum, make_ntuple, query_ntuple,
                   plot_variable, plot_stacked, scan_cut, fit_templates,

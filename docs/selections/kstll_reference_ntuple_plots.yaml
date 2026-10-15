@@ -1,0 +1,37 @@
+# Reference selection of the UH K*ll offline script (ntupleProduction/ntuple_plots.py),
+# the arXiv:2206.05946 selection without the BDT. Used by Mode 1 / cutflow_reproduction.
+reference: ntupleProduction/ntuple_plots.py
+paper: arXiv:2206.05946
+channels:            # branch prefixes substituted into the expressions below
+  B0_ee:    {LEP: e,  B: B0, ID: electronID, PMIN: 0.4}
+  B0_mumu:  {LEP: mu, B: B0, ID: muonID,     PMIN: 0.8}
+  Bp_ee:    {LEP: e,  B: B,  ID: electronID, PMIN: 0.4}
+  Bp_mumu:  {LEP: mu, B: B,  ID: muonID,     PMIN: 0.8}
+truth_match: "isSignal == 1"
+event_id: ["__run__", "__event__"]
+cuts:
+  - name: K* mass window
+    expr: "(Kstr_M > 0.796) & (Kstr_M < 0.996)"
+    targets: combinatorial K pi
+  - name: charmonium vetoes
+    expr:
+      e:  "((m_ll < 2.846) | (m_ll > 3.176)) & ((m_ll < 3.439) | (m_ll > 3.719)) & (m_ll > 0.14)"
+      mu: "((m_ll < 2.946) | (m_ll > 3.176)) & ((m_ll < 3.539) | (m_ll > 3.719))"
+    targets: B -> J/psi K*, B -> psi(2S) K*, photon conversions (ee)
+  - name: lepton ID and momentum
+    expr: "({LEP}1_{B}_{ID} > 0.9) & ({LEP}2_{B}_{ID} > 0.9) & ({LEP}1_{B}_p > {PMIN}) & ({LEP}2_{B}_p > {PMIN})"
+    targets: hadrons misidentified as leptons
+  - name: kaon ID
+    expr: "(Kstr_decayModeID == 2) | (K_Kstr_kaonID / (K_Kstr_kaonID + K_Kstr_pionID) > 0.6)"
+    targets: pi -> K misidentification (skipped in the K_S pi+ sub-mode)
+  - name: pion ID
+    expr: "(Kstr_decayModeID == 1) | (pi_Kstr_pionID / (pi_Kstr_pionID + pi_Kstr_kaonID) > 0.6)"
+    targets: K -> pi misidentification (skipped in the K+ pi0 sub-mode; in the neutral channel Kstr_decayModeID is always 1, so this cut is applied unconditionally there)
+best_candidate: "abs(deltaE)"      # lowest wins, among candidates passing all cuts
+signal_box: "(Mbc > 5.27) & (Mbc < 5.29) & (abs(deltaE) < 0.05)"
+counting: {signal_stages: events with a truth-matched candidate, generic: candidates, box: best candidates}
+reference_cutflow_percent:          # truth-matched, % of 12500 generated per channel
+  B0_mumu: [64.0, 56.3, 47.9, 29.3, 26.4]
+  B0_ee:   [61.8, 54.9, 31.8, 23.0, 17.9]
+  Bp_mumu: [34.5, 30.1, 25.3, 16.4, 12.1]
+  Bp_ee:   [33.7, 29.4, 16.4, 12.7, 8.1]

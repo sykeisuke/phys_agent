@@ -17,6 +17,7 @@ scripts/run_task.sh docs/tasks/2026-10-14_kstll_frozen_cutflow.txt
 | Date | Task file | Materials | Outcome |
 |---|---|---|---|
 | 2026-10-12 | [kstll_official_mc_neutral](2026-10-12_kstll_official_mc_neutral.txt) | Belle II official MC ntuples (INTERNAL) | Free selection on the neutral channel; note accepted. The agent re-derived cuts, so retention numbers drifted between runs — motivated the frozen-selection task. 31 turns, killed once by a wall-clock limit (scan_cut misused as a multi-file counter). |
+| 2026-10-15 | [kstll_frozen_cutflow_recipe](2026-10-15_kstll_frozen_cutflow_recipe.txt) | same | Recipe form of the 2026-10-14 task (4 lines instead of 5,000 characters): names the recipe, the selection file and the samples; everything else comes from the recipe defaults and `data/kekcc/CONTEXT.md`. NOT RUN YET. |
 | 2026-10-14 | [kstll_frozen_cutflow](2026-10-14_kstll_frozen_cutflow.txt) | Belle II official MC ntuples (INTERNAL) | Frozen reference selection (ntupleProduction/ntuple_plots.py). Cutflow reproduced the reference exactly in all 4 channels. 28 turns, 113 tool calls, $2.19 (Sonnet 5, caching). Note had branch names in the body and an oversized table — led to the register rule in `docs/note_template.md`. |
 
 Earlier runs (D*taunu note, K*ll v1/v2 on fast-simulation samples) were
