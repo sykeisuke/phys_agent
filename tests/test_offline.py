@@ -145,6 +145,17 @@ def test_note_register_and_overfull():
     assert _overfull_boxes(log) == ["54pt at lines 93--110"], _overfull_boxes(log)
 
 
+def test_recipe_and_selection_tools():
+    from agent.tools import read_recipe, read_selection
+    assert "seven fields" in read_recipe.call({"name": ""}).lower() or "specification" in read_recipe.call({"name": ""})
+    assert "Figure of merit" in read_recipe.call({"name": "bf_measurement"})
+    assert read_recipe.call({"name": "nope"}).startswith("error")
+    assert read_recipe.call({"name": "../x"}).startswith("error")
+    sel = read_selection.call({"name": "kstll_reference_ntuple_plots"})
+    assert "best_candidate" in sel and "reference_cutflow_percent" in sel
+    assert read_selection.call({"name": "nope"}).startswith("error")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

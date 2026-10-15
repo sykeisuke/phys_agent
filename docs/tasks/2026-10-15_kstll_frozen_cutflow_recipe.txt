@@ -1,0 +1,4 @@
+Recipe: cutflow_reproduction. Reproduce the K*ll reference selection
+docs/selections/kstll_reference_ntuple_plots.yaml on the samples in
+data/kekcc (all four channels, all five copies). Tolerance: identical
+counts. Write the note as kstll_frozen_cutflow_note.md.
