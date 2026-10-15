@@ -8,6 +8,27 @@ that does not apply to a given study is kept with a one-sentence
 statement of why ("Not applicable: ..."); it is never omitted. Subsections
 inside a section are free.
 
+## Register: paper text vs. technical detail
+
+The Abstract and sections 1–8 are written in the register of a journal
+paper: physics names only. Processes are written as decays
+(B0 → K*0 e+e−), samples as "signal MC", "B0B̄0 generic MC", "J/ψ K*
+control sample", variables by their physics symbols (M_bc, ΔE, m(ℓℓ),
+m(Kπ)), truth matching as "truth-matched candidates". The following do
+NOT appear in sections 1–8: ntuple branch names, file names and paths,
+sample or production labels, software/tool names, function arguments,
+code spans in backticks, and narration of the session ("in our first
+pass we ...", "the tool returned ..."). All of that belongs in section 9
+(Analysis provenance), which maps every physics name used above to the
+exact branch, file, tool call and argument, so the note stays both
+readable and reproducible. The mechanical check in save_note rejects
+sections 1–8 that contain code spans, paths or tool names. This rule
+holds for INTERNAL notes too; what differs is the materials header.
+
+Tables are written to fit the width of a typeset page: short row labels
+(abbreviations defined in the caption), at most about six columns, and
+long definitions moved to the caption, a footnote, or section 9.
+
 Unlike a journal paper, the note must be self-explanatory for a referee
 who has not seen the tool outputs: every section from 3 to 8 contains at
 least one table or one figure (Markdown image embed with a full
@@ -24,9 +45,9 @@ Physics motivation; the published analyses whose strategy is followed
 does not do (e.g. MC-only, no systematics).
 
 ## 2 Detector model and samples
-Required: a samples table (process, generator/model or MC campaign and
-software release, events generated, seeds or production tag, luminosity
-weight and how it was derived). Fast simulation: the detector parameters
+Required: a samples table (process written as a decay, generator/model
+or MC campaign and software release, events generated, luminosity
+weight and how it was derived; file names and seeds go to section 9). Fast simulation: the detector parameters
 used. Official samples: campaign, release, global tags. Data: dataset,
 luminosity, run range. State whether multiple candidates per event occur.
 

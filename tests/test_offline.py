@@ -121,6 +121,30 @@ def test_runner_note_tool_enforces_template():
     assert "REJECTED" in r and "Abstract" in r, r
 
 
+def test_note_register_and_overfull():
+    from agent.tools import _check_note_structure, _overfull_boxes
+    import tempfile, pathlib
+    secs = ["1 Introduction", "2 Detector model and samples",
+            "3 Event selection and reconstruction",
+            "4 Background estimation and suppression",
+            "5 Signal yield extraction",
+            "6 Efficiency corrections and systematic uncertainties",
+            "7 Results and summary", "8 Discussion"]
+    body = "".join(f"## {t}\n\n| a |\n|---|\n| 1 |\n\n" for t in secs)
+    tail = "## 9 Analysis provenance\n`query_ntuple` on data/kekcc/a.root, isSignal\n\n## 10 References\n1. x\n"
+    ok = "## Abstract\nB0 -> K*0 e+e- signal MC, M_bc.\n" + body + tail
+    assert _check_note_structure(ok) == []
+    bad = ok.replace("| 1 |", "| `Kstr_M` from kekcc/B0_x_1.root via query_ntuple |", 1)
+    probs = _check_note_structure(bad)
+    assert len(probs) == 1 and "paper register" in probs[0] and "`Kstr_M`" in probs[0], probs
+    # an image embed's path is not jargon
+    assert _check_note_structure(ok.replace("| 1 |", "| 1 |\n\n![M_bc after cuts](plots/mbc.png)", 1)) == []
+    log = pathlib.Path(tempfile.mkdtemp()) / "x.log"
+    log.write_text("Overfull \\hbox (53.9pt too wide) in alignment at lines 93--110\n"
+                   "Overfull \\hbox (2.0pt too wide) in paragraph at lines 5--6\n")
+    assert _overfull_boxes(log) == ["54pt at lines 93--110"], _overfull_boxes(log)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

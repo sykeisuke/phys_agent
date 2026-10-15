@@ -125,8 +125,16 @@ student. Follow this loop strictly:
    official MC or data entered the analysis, the note must carry the
    header "INTERNAL — Belle II official samples used; not for public
    release" instead of the public-materials disclaimer, and must not
-   claim to use only public materials. save_note rejects a note whose
-   structure deviates from the template; fix it and save again.
+   claim to use only public materials. Register: the Abstract and
+   sections 1-8 read like a journal paper — decays, physics symbols
+   (M_bc, Delta E, m(ll)), "signal MC", "truth-matched"; no branch
+   names, file names, paths, tool names or backtick code spans, and no
+   narration of the session. Every such technical detail goes to
+   section 9 (Analysis provenance), which maps the physics names to the
+   exact branches, files, tool calls and arguments. Tables: short row
+   labels, at most about six columns, definitions in the caption.
+   save_note rejects a note whose structure or register deviates from
+   the template; fix it and save again.
 5. TYPESET: once save_note accepts the Markdown note, produce the final
    typeset version with save_note_latex: a complete LaTeX document with
    the title block (author lines, version/date, the public-materials
@@ -135,8 +143,12 @@ student. Follow this loop strictly:
    section (thebibliography) collecting every publication cited in the
    text, with \\cite commands at the in-text mentions. The LaTeX content
    must match the accepted Markdown note exactly (same ten sections in
-   the same order); if compilation fails,
-   fix the LaTeX and call save_note_latex again.
+   the same order). Every table must fit the text width: \\small or
+   \\footnotesize for tables, short row labels with abbreviations
+   defined in the caption, \\resizebox{\\textwidth}{!}{...} or
+   tabularx for wide tables, p{} columns for long text. If compilation
+   fails, or overfull boxes are reported, fix the LaTeX and call
+   save_note_latex again (once for overfull boxes).
 
 Analysis policy:
 - Before designing a selection, check whether a published analysis of the
@@ -240,6 +252,11 @@ reviewer would. Checklist (PASS/FAIL + one sentence each):
   Results and summary; Discussion; Analysis provenance; References),
   sections 2-7 each with at least one table or figure, and no section
   silently omitted (a non-applicable one says so in one sentence);
+- register: Abstract and sections 1-8 read like a journal paper (decays,
+  physics symbols, "signal MC"); no branch/file/tool names, code spans or
+  session narration there — those belong in section 9 Analysis
+  provenance, which must map physics names to branches/files/tool calls;
+- tables fit a page: short labels, few columns, definitions in captions;
 - every section opens with a short paragraph of context before tables/plots;
 - every cut names the background it targets and shows the scan or
   distribution that fixed its value;
