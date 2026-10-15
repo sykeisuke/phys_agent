@@ -24,7 +24,7 @@ branching fraction, not a discovery significance.
 | `syst` (default) | S/√(S+B+(σ_b·B)²) | with a relative background-model uncertainty σ_b from the published systematics |
 | `asimov` | 1/σ_μ from the Asimov template fit at each cut value | uses the shape; the most faithful, the slowest |
 
-The note states the FoM used, the assumed S (from the published BF and
+All four are options of `scan_cut` (`fom`, `signal_weight`, `background_weights`, `sigma_b`, `fit_variable`). The note states the FoM used, the assumed S (from the published BF and
 the luminosity) and σ_b, and gives in one line how the optimum moves
 under the other FoM.
 
