@@ -597,11 +597,48 @@ _NEEDS_TABLE_OR_FIGURE = {"detector", "selection", "background", "yield",
                           "systematic", "results"}
 
 
+_JARGON_PATTERNS = [
+    (r"`[^`\n]+`", "code span"),
+    (r"(?<!\()\b[\w./-]+\.(root|py|dec|json|txt|tex|md)\b", "file name"),
+    (r"\b(data|plots|notes|docs|fastsim|generation|analysis)/[\w./-]*",
+     "path"),
+    (r"\b(query_ntuple|scan_cut|plot_stacked|plot_variable|fit_templates|"
+     r"inspect_ntuple|list_samples|list_branches|make_ntuple|generate_mc|"
+     r"generate_continuum|apply_systematics|save_note|read_references|"
+     r"read_note_template|best_by|post_selection|group_by|split_by|"
+     r"root_files|isSignal|mcErrors|__event__|__run__)\b", "tool/branch name"),
+]
+
+
+def _check_note_register(content: str, heads: list, lines: list) -> list:
+    """Technical identifiers in the paper-register part (Abstract and
+    sections 1-8). Image embeds are exempt (their link target is a path)."""
+    stop = [i for i, l in heads if "provenance" in l.lower()]
+    end = stop[0] if stop else len(lines)
+    body = "\n".join(lines[:end])
+    body = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", body)   # image embeds
+    body = re.sub(r"^#.*$", "", body, flags=re.M)             # headers
+    hits = []
+    for pat, kind in _JARGON_PATTERNS:
+        for m in re.finditer(pat, body):
+            tok = m.group(0)
+            if tok not in [h[1] for h in hits]:
+                hits.append((kind, tok))
+    if not hits:
+        return []
+    shown = ", ".join(f"{t} ({k})" for k, t in hits[:8])
+    more = f" and {len(hits) - 8} more" if len(hits) > 8 else ""
+    return [f"sections 1-8 must be in paper register (physics names only; "
+            f"branch/file/tool names belong in section 9 Analysis "
+            f"provenance) but contain: {shown}{more}"]
+
+
 def _check_note_structure(content: str) -> list:
     """Problems with the note's structure (empty list = conforms)."""
     problems = []
     lines = content.splitlines()
     heads = [(i, l) for i, l in enumerate(lines) if l.startswith("## ")]
+    problems += _check_note_register(content, heads, lines)
     if not re.search(r"^##\s*Abstract", content, re.M):
         problems.append("missing '## Abstract' before section 1")
     pos = []
@@ -1026,6 +1063,9 @@ def save_note_latex(name: str, content: str) -> str:
     booktabs tables, numbered figure floats with descriptive captions,
     \tableofcontents, the abstract, and the title block with the
     public-materials disclaimer; figures are available under ../plots/).
+    Every table must fit the text width (\\small/\\footnotesize, short
+    labels, resizebox or tabularx for wide ones); overfull boxes are
+    reported back.
     On compile errors the error lines are returned so you can fix the
     LaTeX and call again.
 
@@ -1044,7 +1084,33 @@ def save_note_latex(name: str, content: str) -> str:
         errs = [l for l in proc.stdout.splitlines() if l.startswith("!")]
         return ("compile FAILED — fix the LaTeX and call again:\n"
                 + "\n".join(errs[:10]))
-    return f"wrote notes/{out.name} and compiled notes/{out.stem}.pdf"
+    msg = f"wrote notes/{out.name} and compiled notes/{out.stem}.pdf"
+    wide = _overfull_boxes(NOTES_DIR / f"{out.stem}.log")
+    if wide:
+        msg += (f"\nWARNING: {len(wide)} overfull line(s)/table(s) wider than "
+                "the text block: " + "; ".join(wide[:6]) + ". Make the "
+                "tables fit (\\small or \\footnotesize, shorter row labels "
+                "with abbreviations defined in the caption, "
+                "\\resizebox{\\textwidth}{!}{...} or tabularx for wide "
+                "ones, p{} columns for long text) and call save_note_latex "
+                "again once; if the warning persists after that, accept it.")
+    return msg
+
+
+def _overfull_boxes(log_path, min_pt: float = 10.0) -> list:
+    """'Overfull \\hbox (Npt too wide)' entries wider than min_pt."""
+    try:
+        text = log_path.read_text(errors="replace")
+    except OSError:
+        return []
+    out = []
+    for m in re.finditer(r"Overfull \\hbox \(([\d.]+)pt too wide\)[^\n]*",
+                         text):
+        if float(m.group(1)) >= min_pt:
+            where = re.search(r"lines? ([\d-]+)", m.group(0))
+            out.append(f"{float(m.group(1)):.0f}pt at lines "
+                       f"{where.group(1) if where else '?'}")
+    return out
 
 
 def _systematics_table(table: str) -> dict:
