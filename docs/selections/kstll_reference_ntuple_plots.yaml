@@ -1,6 +1,11 @@
 # Reference selection of the UH K*ll offline script (ntupleProduction/ntuple_plots.py),
 # the arXiv:2206.05946 selection without the BDT. Used by Mode 1 / cutflow_reproduction.
 reference: ntupleProduction/ntuple_plots.py
+reference_kind: >-
+  human-written UH offline analysis script (unpublished). Its cutflow is NOT a
+  published result: call it "the reference cutflow of the UH offline script",
+  never "the published reference cutflow". The paper below is the selection it
+  follows, not the source of the reference numbers.
 paper: arXiv:2206.05946
 channels:            # branch prefixes substituted into the expressions below
   B0_ee:    {LEP: e,  B: B0, ID: electronID, PMIN: 0.4}

@@ -14,6 +14,12 @@ agreement.
 | 6 Systematics | none; efficiency table with binomial uncertainties |
 | 7 Validation | every stage within the stated tolerance (default: identical counts; otherwise within 1% relative); each remaining difference explained (best-candidate timing, truth-matching definition, release) |
 
+Name the reference accurately: it is a human-written script or note,
+not a published result. Write "the reference cutflow of the UH offline
+script" (or whatever the selection file's `reference_kind` says), never
+"the published reference cutflow"; the paper the script follows is cited
+separately as the origin of the selection.
+
 Counting conventions are taken from the reference and written in the
 note: events vs candidates at each stage; best candidate chosen among
 the candidates passing the cuts (not a stored rank computed before them).
