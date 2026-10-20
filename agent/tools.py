@@ -791,12 +791,34 @@ def _check_note_register(content: str, heads: list, lines: list) -> list:
             f"provenance) but contain: {shown}{more}"]
 
 
+def _check_table_captions(lines: list) -> list:
+    """Every Markdown table must have a 'Table N.' caption line immediately
+    above it (table captions go above, figure captions below)."""
+    bad = []
+    for i, l in enumerate(lines):
+        if not (l.startswith("|") and i + 1 < len(lines)
+                and re.match(r"^\|\s*:?-", lines[i + 1])):
+            continue                      # not a table header row
+        j = i - 1
+        while j >= 0 and not lines[j].strip():
+            j -= 1
+        if j < 0 or not re.match(r"^\**\s*Table\s+\d+", lines[j].strip(),
+                                 re.I):
+            bad.append(i + 1)
+    if not bad:
+        return []
+    return [f"table(s) starting at line(s) {bad[:6]} have no '**Table N.** "
+            "...' caption line immediately above them (table captions go "
+            "above the table, figure captions below the figure)"]
+
+
 def _check_note_structure(content: str) -> list:
     """Problems with the note's structure (empty list = conforms)."""
     problems = []
     lines = content.splitlines()
     heads = [(i, l) for i, l in enumerate(lines) if l.startswith("## ")]
     problems += _check_note_register(content, heads, lines)
+    problems += _check_table_captions(lines)
     if not re.search(r"^##\s*Abstract", content, re.M):
         problems.append("missing '## Abstract' before section 1")
     pos = []
@@ -1223,7 +1245,8 @@ def save_note_latex(name: str, content: str) -> str:
     public-materials disclaimer; figures are available under ../plots/).
     Every table must fit the text width (\\small/\\footnotesize, short
     labels, resizebox or tabularx for wide ones); overfull boxes are
-    reported back.
+    reported back. Table captions go ABOVE the tabular, figure captions
+    BELOW the graphic; floats without a caption are rejected.
     On compile errors the error lines are returned so you can fix the
     LaTeX and call again.
 
@@ -1231,6 +1254,10 @@ def save_note_latex(name: str, content: str) -> str:
         name: file name, e.g. "dsttaunu_note.tex".
         content: the complete LaTeX source.
     """
+    caps = _check_latex_captions(content)
+    if caps:
+        return ("LaTeX REJECTED — fix the floats and call again: "
+                + "; ".join(caps))
     NOTES_DIR.mkdir(exist_ok=True)
     out = NOTES_DIR / _safe_name(name, ".tex")
     out.write_text(content)
@@ -1253,6 +1280,33 @@ def save_note_latex(name: str, content: str) -> str:
                 "ones, p{} columns for long text) and call save_note_latex "
                 "again once; if the warning persists after that, accept it.")
     return msg
+
+
+def _check_latex_captions(tex: str) -> list:
+    """Table captions must precede the tabular, figure captions must follow
+    the graphic, and every float needs a caption."""
+    problems = []
+    for kind, inner, where, shown in (
+            ("table", r"\\begin\{tabular", "BEFORE", "\\begin{tabular}"),
+            ("figure", r"\\includegraphics", "AFTER", "\\includegraphics")):
+        envs = re.findall(r"\\begin\{%s\*?\}.*?\\end\{%s\*?\}"
+                          % (kind, kind), tex, re.S)
+        missing, wrong = [], []
+        for n, env in enumerate(envs, 1):
+            c = env.find("\\caption")
+            m = re.search(inner, env)
+            if c < 0:
+                missing.append(n)
+            elif m and ((c > m.start()) if where == "BEFORE"
+                        else (c < m.start())):
+                wrong.append(n)
+        if missing:
+            problems.append(f"{kind}(s) {missing} have no \\caption")
+        if wrong:
+            problems.append(f"{kind}(s) {wrong}: \\caption must come {where} "
+                            f"{shown} ({kind} captions go "
+                            f"{'above' if where == 'BEFORE' else 'below'})")
+    return problems
 
 
 def _overfull_boxes(log_path, min_pt: float = 10.0) -> list:
