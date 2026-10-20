@@ -29,7 +29,17 @@ cuts:
     targets: K -> pi misidentification (skipped in the K+ pi0 sub-mode; in the neutral channel Kstr_decayModeID is always 1, so this cut is applied unconditionally there)
 best_candidate: "abs(deltaE)"      # lowest wins, among candidates passing all cuts
 signal_box: "(Mbc > 5.27) & (Mbc < 5.29) & (abs(deltaE) < 0.05)"
-counting: {signal_stages: events with a truth-matched candidate, generic: candidates, box: best candidates}
+counting:
+  signal_stages: events with at least one truth-matched candidate passing the cuts so far
+  generic: candidates
+  box: >-
+    the best candidate is chosen among ALL candidates passing cuts 1-5
+    (no truth condition in the selection: tool argument best_by="abs(deltaE)");
+    the signal box and the truth match are then applied to that one chosen
+    candidate (tool argument post_selection="(isSignal == 1) & (Mbc > 5.27)
+    & (Mbc < 5.29) & (abs(deltaE) < 0.05)"). Putting isSignal == 1 into the
+    selection before the best-candidate choice counts events with ANY
+    truth-matched candidate and overestimates the box stage by 0.5-1.6 pp.
 reference_cutflow_percent:          # truth-matched, % of 12500 generated per channel
   B0_mumu: [64.0, 56.3, 47.9, 29.3, 26.4]
   B0_ee:   [61.8, 54.9, 31.8, 23.0, 17.9]

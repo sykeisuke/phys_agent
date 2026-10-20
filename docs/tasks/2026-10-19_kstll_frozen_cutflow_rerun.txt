@@ -1,0 +1,7 @@
+Recipe: cutflow_reproduction. Reproduce the K*ll reference selection
+docs/selections/kstll_reference_ntuple_plots.yaml on the samples in
+data/kekcc (all four channels, all five copies). Tolerance: identical
+counts. Box stage: choose the best candidate (lowest abs(deltaE)) among
+all candidates passing cuts 1-5 with no truth condition in the selection,
+then apply the signal box and isSignal == 1 to that chosen candidate via
+post_selection. Write the note as kstll_frozen_cutflow_note.md.
