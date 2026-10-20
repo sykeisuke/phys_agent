@@ -175,6 +175,22 @@ def test_scan_cut_figures_of_merit():
     assert scan_cut.call({**common, "fom": "asimov", "fit_variable": "Mbc"}).startswith("error")
 
 
+def test_reference_selection_resolves_per_channel():
+    import yaml
+    from agent.tools import REPO
+    d = yaml.safe_load((REPO / "docs/selections/kstll_reference_ntuple_plots.yaml").read_text())
+    assert d["truth_match"].startswith("("), "truth_match must be parenthesized"
+    for ch, sub in d["channels"].items():
+        for c in d["cuts"]:
+            e = c["expr"]
+            if isinstance(e, dict):
+                e = e.get(sub["LEP"]) or e.get(sub["B"])
+            assert e, (ch, c["name"])
+            e.format(**sub)                      # all placeholders resolve
+    pion = next(c for c in d["cuts"] if c["name"] == "pion ID")["expr"]
+    assert "decayModeID" not in pion["B0"] and "decayModeID" in pion["B"]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
