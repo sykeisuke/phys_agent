@@ -29,6 +29,14 @@ Tables are written to fit the width of a typeset page: short row labels
 (abbreviations defined in the caption), at most about six columns, and
 long definitions moved to the caption, a footnote, or section 9.
 
+Captions: every table and figure is numbered and captioned. A **table
+caption goes above the table** — in Markdown a line "**Table N.** ..."
+immediately before the table; in LaTeX `\caption` before
+`\begin{tabular}`. A **figure caption goes below the figure** — in
+Markdown the image's alt text, in LaTeX `\caption` after
+`\includegraphics`. The mechanical checks in save_note and
+save_note_latex enforce this.
+
 Unlike a journal paper, the note must be self-explanatory for a referee
 who has not seen the tool outputs: every section from 3 to 8 contains at
 least one table or one figure (Markdown image embed with a full

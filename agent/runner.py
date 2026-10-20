@@ -143,13 +143,18 @@ them (never through server-side code execution).
    section 9 (Analysis provenance), which maps the physics names to the
    exact branches, files, tool calls and arguments. Tables: short row
    labels, at most about six columns, definitions in the caption.
+   Captions: a "**Table N.** ..." line immediately ABOVE every table;
+   figure captions are the image alt text (rendered below the figure).
    save_note rejects a note whose structure or register deviates from
    the template; fix it and save again.
 5. TYPESET: once save_note accepts the Markdown note, produce the final
    typeset version with save_note_latex: a complete LaTeX document with
    the title block (author lines, version/date, the public-materials
    disclaimer or the INTERNAL header, whichever applies), the abstract, a table of contents, booktabs tables,
-   numbered figure floats with descriptive captions, and a References
+   numbered figure floats with descriptive captions (\\caption AFTER
+   \\includegraphics) and table floats with \\caption BEFORE
+   \\begin{tabular} — table captions above, figure captions below —
+   and a References
    section (thebibliography) collecting every publication cited in the
    text, with \\cite commands at the in-text mentions. The LaTeX content
    must match the accepted Markdown note exactly (same ten sections in
@@ -273,6 +278,8 @@ reviewer would. Checklist (PASS/FAIL + one sentence each):
   session narration there — those belong in section 9 Analysis
   provenance, which must map physics names to branches/files/tool calls;
 - tables fit a page: short labels, few columns, definitions in captions;
+  every table has a "Table N." caption line above it, every figure a
+  caption below (alt text);
 - every section opens with a short paragraph of context before tables/plots;
 - every cut names the background it targets and shows the scan or
   distribution that fixed its value;

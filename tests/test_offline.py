@@ -105,7 +105,7 @@ def test_note_structure_check():
         out = "## Abstract\nx\n"
         for t in titles:
             out += f"## {t}\n\n"
-            out += "text\n\n" if t == drop else "| a |\n|---|\n| 1 |\n\n"
+            out += "text\n\n" if t == drop else "**Table 1.** t\n\n| a |\n|---|\n| 1 |\n\n"
         return out
     assert _check_note_structure(note()) == []
     bad = _check_note_structure(note(drop="3 Event selection and reconstruction"))
@@ -130,7 +130,7 @@ def test_note_register_and_overfull():
             "5 Signal yield extraction",
             "6 Efficiency corrections and systematic uncertainties",
             "7 Results and summary", "8 Discussion"]
-    body = "".join(f"## {t}\n\n| a |\n|---|\n| 1 |\n\n" for t in secs)
+    body = "".join(f"## {t}\n\n**Table 1.** t\n\n| a |\n|---|\n| 1 |\n\n" for t in secs)
     tail = "## 9 Analysis provenance\n`query_ntuple` on data/kekcc/a.root, isSignal\n\n## 10 References\n1. x\n"
     ok = "## Abstract\nB0 -> K*0 e+e- signal MC, M_bc.\n" + body + tail
     assert _check_note_structure(ok) == []
@@ -189,6 +189,24 @@ def test_reference_selection_resolves_per_channel():
             e.format(**sub)                      # all placeholders resolve
     pion = next(c for c in d["cuts"] if c["name"] == "pion ID")["expr"]
     assert "decayModeID" not in pion["B0"] and "decayModeID" in pion["B"]
+
+
+def test_caption_placement_checks():
+    from agent.tools import _check_latex_captions, _check_table_captions
+    good = ("\\begin{table}\\caption{x}\\begin{tabular}{l}a\\end{tabular}\\end{table}"
+            "\\begin{figure}\\includegraphics{a.png}\\caption{y}\\end{figure}")
+    assert _check_latex_captions(good) == []
+    bad = ("\\begin{table}\\begin{tabular}{l}a\\end{tabular}\\caption{x}\\end{table}"
+           "\\begin{figure}\\caption{y}\\includegraphics{a.png}\\end{figure}"
+           "\\begin{figure}\\includegraphics{b.png}\\end{figure}")
+    probs = _check_latex_captions(bad)
+    assert any("table" in p and "BEFORE" in p for p in probs), probs
+    assert any("figure" in p and "AFTER" in p for p in probs), probs
+    assert any("no \\caption" in p for p in probs), probs
+    ok_md = ["**Table 1.** Samples.", "", "| a | b |", "|---|---|", "| 1 | 2 |"]
+    assert _check_table_captions(ok_md) == []
+    bad_md = ["Some text.", "", "| a | b |", "|---|---|", "| 1 | 2 |"]
+    assert "caption line" in _check_table_captions(bad_md)[0]
 
 
 if __name__ == "__main__":
