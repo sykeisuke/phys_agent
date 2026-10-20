@@ -7,7 +7,7 @@ channels:            # branch prefixes substituted into the expressions below
   B0_mumu:  {LEP: mu, B: B0, ID: muonID,     PMIN: 0.8}
   Bp_ee:    {LEP: e,  B: B,  ID: electronID, PMIN: 0.4}
   Bp_mumu:  {LEP: mu, B: B,  ID: muonID,     PMIN: 0.8}
-truth_match: "isSignal == 1"
+truth_match: "(isSignal == 1)"      # keep the parentheses when combining with & (operator precedence)
 event_id: ["__run__", "__event__"]
 cuts:
   - name: K* mass window
@@ -22,11 +22,18 @@ cuts:
     expr: "({LEP}1_{B}_{ID} > 0.9) & ({LEP}2_{B}_{ID} > 0.9) & ({LEP}1_{B}_p > {PMIN}) & ({LEP}2_{B}_p > {PMIN})"
     targets: hadrons misidentified as leptons
   - name: kaon ID
-    expr: "(Kstr_decayModeID == 2) | (K_Kstr_kaonID / (K_Kstr_kaonID + K_Kstr_pionID) > 0.6)"
-    targets: pi -> K misidentification (skipped in the K_S pi+ sub-mode)
+    expr:
+      B0: "(K_Kstr_kaonID / (K_Kstr_kaonID + K_Kstr_pionID) > 0.6)"
+      B:  "(Kstr_decayModeID == 2) | (K_Kstr_kaonID / (K_Kstr_kaonID + K_Kstr_pionID) > 0.6)"
+    targets: "pi -> K misidentification (charged channel: skipped in the K_S pi+ sub-mode, decayModeID 2)"
   - name: pion ID
-    expr: "(Kstr_decayModeID == 1) | (pi_Kstr_pionID / (pi_Kstr_pionID + pi_Kstr_kaonID) > 0.6)"
-    targets: K -> pi misidentification (skipped in the K+ pi0 sub-mode; in the neutral channel Kstr_decayModeID is always 1, so this cut is applied unconditionally there)
+    expr:
+      B0: "(pi_Kstr_pionID / (pi_Kstr_pionID + pi_Kstr_kaonID) > 0.6)"
+      B:  "(Kstr_decayModeID == 1) | (pi_Kstr_pionID / (pi_Kstr_pionID + pi_Kstr_kaonID) > 0.6)"
+    targets: "K -> pi misidentification (charged channel: skipped in the K+ pi0 sub-mode, decayModeID 1)"
+    # The neutral-channel ntuples carry Kstr_decayModeID == 1 for every candidate
+    # (it is not a sub-mode switch there), so the charged-channel expression would
+    # silently bypass the pion ID in B0 channels: use the B0 expressions for B0_ee/B0_mumu.
 best_candidate: "abs(deltaE)"      # lowest wins, among candidates passing all cuts
 signal_box: "(Mbc > 5.27) & (Mbc < 5.29) & (abs(deltaE) < 0.05)"
 counting:
