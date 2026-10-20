@@ -288,7 +288,8 @@ reviewer would. Checklist (PASS/FAIL + one sentence each):
 - the extraction formula has every input defined; fits are validated;
 - figures are referenced by file name where claims rely on them;
 - limitations and a systematics outlook are ordered and concrete;
-- specific publications are cited (authors, journal).
+- specific publications are cited (authors, journal); a human-written
+  reference script or internal note is never called "published".
 CONCERNS: anything a referee would bounce.
 VERDICT: one final line, "APPROVE" or "REVISE: <actionable feedback>".
 """
