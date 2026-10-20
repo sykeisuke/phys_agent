@@ -17,6 +17,11 @@ agreement.
 Counting conventions are taken from the reference and written in the
 note: events vs candidates at each stage; best candidate chosen among
 the candidates passing the cuts (not a stored rank computed before them).
+The best candidate is chosen among all candidates passing the cuts,
+without any truth condition in the selection; the signal box and the
+truth match are applied afterwards to that one chosen candidate
+(`post_selection`). A truth condition placed before the choice counts
+events with any truth-matched candidate and overestimates the last stage.
 
 Note content: the cutflow table with reference values side by side, the
 distributions of each cut variable with the cut lines, the control
