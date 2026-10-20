@@ -7,6 +7,7 @@ request_approval tool, mirroring the workflow figure in the README.
 from __future__ import annotations
 
 import re
+import time
 
 import anthropic
 from anthropic import beta_tool
@@ -75,6 +76,9 @@ it can generate its own fast-simulation ntuples (EvtGen -> fast detector
 simulation -> ROOT) and it can analyse ntuples produced elsewhere (e.g.
 official basf2 ntuples copied under data/). You work together with a
 student. Follow this loop strictly:
+
+Tools run on the local machine; the ntuples are reachable only through
+them (never through server-side code execution).
 
 0. DISCOVER (ntuples you did not produce): call list_samples, then
    inspect_ntuple on one file per sample to learn the tree, the branch
@@ -344,8 +348,11 @@ def make_note_tool(review: str, client, model: str,
     return save_note
 
 
+# The 20260209+ web tools bundle a server-side code_execution sandbox; the
+# agent then tries to call the local ntuple tools from inside it (34 wasted
+# calls in the 2026-10-20 run). The 20250305 tool is search only.
 WEB_SEARCH_TOOL = {
-    "type": "web_search_20260209",
+    "type": "web_search_20250305",
     "name": "web_search",
     "max_uses": 8,
 }
@@ -388,50 +395,67 @@ def run(task: str, model: str = MODEL, max_turns: int = 60,
     messages = [{"role": "user", "content": task}]
     turns = 0
     restarts = 0
+    net_retries = 0
     try:
         while True:
-            runner = client.beta.messages.tool_runner(
-                model=model,
-                max_tokens=32000,
-                stream=True,  # >10-min requests require streaming (SDK guard)
-                system=SYSTEM_PROMPT,
-                tools=tools,
-                messages=messages,
-                # Prompt caching: every turn resends the system prompt, the
-                # tool definitions and the whole history. Automatic caching
-                # bills the repeated prefix as cheap cache reads instead of
-                # full-price input.
-                cache_control={"type": "ephemeral"},
-                # Server-side fallback: a safety-classifier decline is
-                # retried on a fallback model instead of failing outright.
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
-            )
-            last = None
-            for item in runner:
-                # with stream=True the runner yields message streams; the
-                # loop body only needs the final message of each turn
-                message = item.get_final_message() if hasattr(
-                    item, "get_final_message") else item
-                last = message
-                turns += 1
-                usage.add(getattr(message, "model", model), message.usage)
-                for block in message.content:
-                    if block.type == "text" and block.text.strip():
-                        print(block.text)
-                    elif block.type == "tool_use":
-                        print(f"[tool] {block.name}({block.input})")
-                    elif block.type == "server_tool_use":
-                        print(f"[web] {block.name}({block.input})")
-                # mirror the history: the runner keeps its own copy
-                messages.append({"role": "assistant",
-                                 "content": message.content})
-                tool_response = runner.generate_tool_call_response()
-                if tool_response is not None:
-                    messages.append(tool_response)
-                if turns >= max_turns:
-                    print("!! max_turns reached — stopping the agent loop")
-                    return
+            try:
+                runner = client.beta.messages.tool_runner(
+                    model=model,
+                    max_tokens=32000,
+                    stream=True,  # >10-min requests require streaming (SDK guard)
+                    system=SYSTEM_PROMPT,
+                    tools=tools,
+                    messages=messages,
+                    # Prompt caching: every turn resends the system prompt, the
+                    # tool definitions and the whole history. Automatic caching
+                    # bills the repeated prefix as cheap cache reads instead of
+                    # full-price input.
+                    cache_control={"type": "ephemeral"},
+                    # Server-side fallback: a safety-classifier decline is
+                    # retried on a fallback model instead of failing outright.
+                    betas=["server-side-fallback-2026-07-01"],
+                    fallbacks="default",
+                )
+                last = None
+                for item in runner:
+                    # with stream=True the runner yields message streams; the
+                    # loop body only needs the final message of each turn
+                    message = item.get_final_message() if hasattr(
+                        item, "get_final_message") else item
+                    last = message
+                    turns += 1
+                    usage.add(getattr(message, "model", model), message.usage)
+                    for block in message.content:
+                        if block.type == "text" and block.text.strip():
+                            print(block.text)
+                        elif block.type == "tool_use":
+                            print(f"[tool] {block.name}({block.input})")
+                        elif block.type == "server_tool_use":
+                            print(f"[web] {block.name}({block.input})")
+                    # mirror the history: the runner keeps its own copy
+                    messages.append({"role": "assistant",
+                                     "content": message.content})
+                    tool_response = runner.generate_tool_call_response()
+                    if tool_response is not None:
+                        messages.append(tool_response)
+                    if turns >= max_turns:
+                        print("!! max_turns reached — stopping the agent loop")
+                        return
+            except (anthropic.APIConnectionError, anthropic.APIStatusError,
+                    ConnectionError, OSError) as exc:
+                # a dropped stream (connection reset, 5xx, overload) must
+                # not throw away the whole run: the history is mirrored in
+                # `messages`, so restart the tool runner from it
+                net_retries += 1
+                if net_retries > 5:
+                    print(f"!! giving up after 5 connection errors: {exc}")
+                    raise
+                wait = 15 * net_retries
+                print(f"!! connection error ({exc.__class__.__name__}: "
+                      f"{exc}); retry {net_retries}/5 in {wait}s from "
+                      f"turn {turns}")
+                time.sleep(wait)
+                continue
             if last is None or last.stop_reason != "pause_turn":
                 break
             restarts += 1
